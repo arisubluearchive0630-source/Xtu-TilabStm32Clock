@@ -5,5 +5,13 @@
     ],
     "cmake.preferredGenerators": [
         "Ninja"
-    ]
+    ],
+    "cmake.environment": {
+        "TMP": "C:/tmp",
+        "tmp": "C:/tmp"
+    },
+    "cmake.buildEnvironment": {
+        "TMP": "C:/tmp",
+        "tmp": "C:/tmp"
+    }
 }
