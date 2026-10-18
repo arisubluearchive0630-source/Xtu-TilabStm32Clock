@@ -23,6 +23,8 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <string.h>
+#include "LED_iic.h"
+#include "keyboard.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,7 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define BUTTONS_ATTACHED_NUM 3
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -41,7 +43,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim2;
-
+SingleBtn buttons[BUTTONS_ATTACHED_NUM];
+static uint16_t buttons_GPIO[] = {GPIO_PIN_12, GPIO_PIN_15, GPIO_PIN_5};
+static GPIO_TypeDef *buttons_GPIO_area[] = {GPIOB, GPIOB, GPIOB};
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
@@ -74,7 +78,7 @@ static void MX_TIM2_Init(void);
 int _write(int file, char *ptr, int len)
 {
   (void)file;
-  HAL_UART_Transmit(&huart1, (uint8_t *)ptr, (uint16_t)len, HAL_MAX_DELAY);
+  HAL_UART_Transmit(&huart1, (uint8_t *)ptr, (uint16_t)len, 2);
   return len;
 }
 /* USER CODE END 0 */
@@ -87,12 +91,17 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  for (int i = 0; i < BUTTONS_ATTACHED_NUM; i++)
+  {
+    SingleBtn_Init(&buttons[i], buttons_GPIO_area[i], buttons_GPIO[i]);
+  }
+  //! Button initialization
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+
   HAL_Init();
 
   /* USER CODE BEGIN Init */
@@ -123,6 +132,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    GetKeyboardStatus(buttons, BUTTONS_ATTACHED_NUM);
+    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, buttons[0].status);
   }
   /* USER CODE END 3 */
 }
@@ -252,14 +263,14 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3 | SCK_Pin | SDA_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
@@ -268,9 +279,22 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : volumeup_Pin volumedown_Pin setting_Pin */
+  GPIO_InitStruct.Pin = volumeup_Pin | volumedown_Pin | setting_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   /*Configure GPIO pin : PB3 */
   GPIO_InitStruct.Pin = GPIO_PIN_3;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : SCK_Pin SDA_Pin */
+  GPIO_InitStruct.Pin = SCK_Pin | SDA_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
@@ -376,9 +400,9 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
       short int years = rx_buffer[5] * 1000 + rx_buffer[6] * 100 + rx_buffer[7] * 10 + rx_buffer[8] * 1;
       short int months = rx_buffer[10] * 10 + rx_buffer[11] * 1;
       short int days = rx_buffer[13] * 10 + rx_buffer[14] * 1;
-      Time_present.days=days;
-      Time_present.months=months;
-      Time_present.years=years;
+      Time_present.days = days;
+      Time_present.months = months;
+      Time_present.years = years;
     }
     if (strncmp((char *)rx_buffer, "#time", 5) == 0 && Size >= 13 && rx_buffer[7] == ':' && rx_buffer[10] == ':')
     {
@@ -391,9 +415,9 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
       short int hours = rx_buffer[5] * 10 + rx_buffer[6] * 1;
       short int minutes = rx_buffer[8] * 10 + rx_buffer[9] * 1;
       short int seconds = rx_buffer[11] * 10 + rx_buffer[12] * 1;
-      Time_present.seconds=seconds;
-      Time_present.minutes=minutes;
-      Time_present.hours=hours;
+      Time_present.seconds = seconds;
+      Time_present.minutes = minutes;
+      Time_present.hours = hours;
     }
   }
 }
