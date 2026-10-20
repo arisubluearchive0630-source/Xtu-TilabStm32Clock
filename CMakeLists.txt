@@ -46,6 +46,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/LED_iic.c
     Core/Src/keyboard.c
+    Core/Src/OLED_font.h
 )
 
 # Add include paths

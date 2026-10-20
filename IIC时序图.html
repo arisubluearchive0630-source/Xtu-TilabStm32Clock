@@ -1,0 +1,1950 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>I²C 时序图 · SCL / SDA 逐拍动画</title>
+<meta name="description" content="I²C（IIC）总线时序交互演示：START、地址、R/W、ACK、数据、STOP，以及 SCL 与 SDA 的完整波形。" />
+<style>
+  :root{
+    --bg:#060b12;
+    --panel:#0a1420;
+    --panel-2:#0d1926;
+    --panel-3:#07111b;
+    --text:#e9f1f9;
+    --muted:#8ea2b7;
+    --dim:#60758b;
+    --border:rgba(148,163,184,.14);
+    --border-strong:rgba(148,163,184,.24);
+    --scl:#3cc9f7;
+    --sda:#f8bf4c;
+    --green:#39dca0;
+    --violet:#b393fb;
+    --pink:#f77db7;
+    --red:#ff8095;
+    --mono:"Cascadia Code","SFMono-Regular",Consolas,"Liberation Mono",monospace;
+    --sans:"SF Pro Display","Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    --radius:22px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;color-scheme:dark}
+  body{
+    margin:0;
+    min-width:320px;
+    color:var(--text);
+    font-family:var(--sans);
+    background:
+      radial-gradient(1100px 700px at 8% -8%,rgba(60,201,247,.15),transparent 62%),
+      radial-gradient(880px 620px at 96% 8%,rgba(248,191,76,.075),transparent 58%),
+      radial-gradient(900px 700px at 50% 100%,rgba(179,147,251,.045),transparent 65%),
+      var(--bg);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background-image:
+      linear-gradient(rgba(148,163,184,.028) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(148,163,184,.028) 1px,transparent 1px);
+    background-size:56px 56px;
+    mask-image:linear-gradient(to bottom,rgba(0,0,0,.9),transparent 78%);
+    z-index:0;
+  }
+  body::after{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    background:radial-gradient(ellipse at 50% 20%,transparent 35%,rgba(3,7,12,.42) 100%);
+    z-index:0;
+  }
+  ::selection{background:rgba(60,201,247,.28);color:#fff}
+  a{color:inherit}
+  button,input{font:inherit}
+  button{color:inherit}
+  button:focus-visible,input:focus-visible{
+    outline:2px solid var(--scl);
+    outline-offset:3px;
+  }
+
+  .page{
+    position:relative;
+    z-index:1;
+    width:min(1280px,100%);
+    margin:0 auto;
+    padding:34px 30px 58px;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero{
+    display:grid;
+    grid-template-columns:minmax(0,1.32fr) minmax(330px,.68fr);
+    gap:clamp(28px,5vw,72px);
+    align-items:end;
+    padding:34px 0 52px;
+  }
+  .eyebrow{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:var(--mono);
+    font-size:10.5px;
+    font-weight:600;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:#9fb4c8;
+  }
+  .eyebrow .live-dot,
+  .frame-code .live-dot{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 0 4px rgba(57,220,160,.1),0 0 14px rgba(57,220,160,.85);
+    animation:breathe 2.3s ease-in-out infinite;
+  }
+  @keyframes breathe{
+    0%,100%{opacity:1;transform:scale(1)}
+    50%{opacity:.52;transform:scale(.82)}
+  }
+  h1{
+    margin:22px 0 0;
+    font-size:clamp(43px,5.4vw,74px);
+    line-height:.99;
+    letter-spacing:-.055em;
+    font-weight:720;
+  }
+  h1 .line{display:block}
+  h1 .grad{
+    display:inline-block;
+    background:linear-gradient(98deg,#f2f8fe 0%,#a5e8ff 38%,#42c9f6 76%,#25a8df 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    padding-bottom:.06em;
+  }
+  h1 .dot{color:var(--sda);font-size:.38em;vertical-align:.32em;letter-spacing:0;margin-left:.12em}
+  .hero-lead{
+    max-width:660px;
+    margin:24px 0 0;
+    color:#a7b9ca;
+    font-size:15.5px;
+    line-height:1.85;
+    letter-spacing:.01em;
+  }
+  .hero-lead strong{color:#e9f1f9;font-weight:600}
+  .hero-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:9px;
+    margin-top:25px;
+  }
+  .meta-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    padding:7px 11px;
+    border:1px solid var(--border);
+    border-radius:999px;
+    background:rgba(12,25,38,.56);
+    color:#9bb0c5;
+    font-size:11.5px;
+    white-space:nowrap;
+  }
+  .meta-chip i{
+    width:5px;height:5px;border-radius:50%;
+    background:var(--scl);
+    box-shadow:0 0 8px rgba(60,201,247,.7);
+  }
+  .meta-chip:nth-child(2) i{background:var(--sda);box-shadow:0 0 8px rgba(248,191,76,.65)}
+
+  /* ---------- Hero principle card ---------- */
+  .principle-card{
+    position:relative;
+    overflow:hidden;
+    padding:23px 23px 20px;
+    border:1px solid rgba(148,163,184,.17);
+    border-radius:20px;
+    background:linear-gradient(155deg,rgba(16,34,51,.92),rgba(7,17,27,.9));
+    box-shadow:0 28px 80px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.045);
+  }
+  .principle-card::before{
+    content:"";
+    position:absolute;
+    inset:0 0 auto;
+    height:1px;
+    background:linear-gradient(90deg,transparent,var(--scl),var(--sda),transparent);
+    opacity:.65;
+  }
+  .principle-card::after{
+    content:"";
+    position:absolute;
+    width:170px;height:170px;
+    right:-80px;top:-80px;
+    border-radius:50%;
+    background:radial-gradient(circle,rgba(60,201,247,.18),transparent 65%);
+    pointer-events:none;
+  }
+  .principle-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding-bottom:15px;
+    border-bottom:1px solid var(--border);
+  }
+  .principle-head h2{
+    margin:0;
+    font-size:15px;
+    letter-spacing:-.01em;
+    font-weight:650;
+  }
+  .principle-head span{
+    font-family:var(--mono);
+    font-size:8.5px;
+    letter-spacing:.14em;
+    color:var(--dim);
+  }
+  .principle{
+    display:grid;
+    grid-template-columns:27px 1fr;
+    gap:11px;
+    padding:13px 0;
+    border-bottom:1px solid rgba(148,163,184,.09);
+  }
+  .principle:last-of-type{border-bottom:0}
+  .principle .n{
+    font-family:var(--mono);
+    font-size:9.5px;
+    color:var(--dim);
+    padding-top:2px;
+  }
+  .principle strong{display:block;font-size:13px;font-weight:610;color:#dfeaf5;letter-spacing:.01em}
+  .principle p{margin:4px 0 0;color:var(--muted);font-size:11.5px;line-height:1.55}
+  .principle em{font-style:normal;color:var(--scl)}
+  .principle:nth-of-type(2) em{color:var(--sda)}
+  .principle:nth-of-type(3) em{color:var(--green)}
+  .open-drain{
+    display:flex;
+    gap:9px;
+    align-items:flex-start;
+    margin-top:14px;
+    padding:11px 12px;
+    border:1px solid rgba(248,191,76,.13);
+    border-radius:10px;
+    background:rgba(248,191,76,.045);
+    color:#a79772;
+    font-size:10.5px;
+    line-height:1.55;
+  }
+  .open-drain b{color:#e7c47d;font-weight:600}
+  .open-drain svg{width:14px;height:14px;flex:0 0 14px;margin-top:1px;color:var(--sda)}
+
+  /* ---------- Section framing ---------- */
+  .section-head{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:26px;
+    margin:54px 0 18px;
+  }
+  .section-head h2{
+    margin:9px 0 0;
+    font-size:clamp(23px,2.7vw,31px);
+    letter-spacing:-.035em;
+    font-weight:660;
+  }
+  .section-head .aside{
+    max-width:360px;
+    color:var(--muted);
+    font-size:11.5px;
+    line-height:1.65;
+    text-align:right;
+    padding-bottom:4px;
+  }
+  .section-head .aside code{
+    font-family:var(--mono);
+    color:#b8d8e9;
+    font-size:10.5px;
+  }
+
+  /* ---------- Explorer panel ---------- */
+  .explorer{
+    position:relative;
+    overflow:hidden;
+    border:1px solid rgba(148,163,184,.15);
+    border-radius:var(--radius);
+    background:linear-gradient(180deg,rgba(12,25,38,.97),rgba(8,18,29,.98));
+    box-shadow:0 36px 110px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.035);
+  }
+  .explorer::before{
+    content:"";
+    position:absolute;
+    inset:0 0 auto;
+    height:1px;
+    background:linear-gradient(90deg,transparent 8%,rgba(60,201,247,.55) 45%,rgba(248,191,76,.45) 70%,transparent 94%);
+    pointer-events:none;
+  }
+  .explorer-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:26px;
+    padding:22px 24px 19px;
+  }
+  .frame-code{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:var(--mono);
+    font-size:9px;
+    letter-spacing:.17em;
+    color:var(--dim);
+  }
+  .frame-code .live-dot{width:5px;height:5px}
+  .frame-code b{color:var(--green);font-weight:600}
+  .frame-title{
+    margin:8px 0 0;
+    font-size:23px;
+    line-height:1.25;
+    letter-spacing:-.025em;
+    font-weight:650;
+  }
+  .frame-sub{
+    margin:5px 0 0;
+    color:var(--muted);
+    font-size:11.5px;
+    font-family:var(--mono);
+    letter-spacing:.01em;
+  }
+  .toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+    gap:9px;
+  }
+  .mode-switch,.speed-switch{
+    display:inline-flex;
+    padding:3px;
+    border:1px solid var(--border);
+    border-radius:10px;
+    background:rgba(3,10,17,.64);
+  }
+  .mode-switch button,.speed-switch button{
+    appearance:none;
+    border:0;
+    background:transparent;
+    color:#7e93a8;
+    border-radius:7px;
+    cursor:pointer;
+    transition:background .18s,color .18s,box-shadow .18s;
+  }
+  .mode-switch button{
+    padding:7px 12px;
+    font-size:11.5px;
+    white-space:nowrap;
+  }
+  .speed-switch button{
+    padding:6px 8px;
+    font-family:var(--mono);
+    font-size:9.5px;
+    min-width:33px;
+  }
+  .mode-switch button:hover,.speed-switch button:hover{color:#dce8f2}
+  .mode-switch button.active{
+    background:rgba(60,201,247,.13);
+    color:#bdeeff;
+    box-shadow:inset 0 0 0 1px rgba(60,201,247,.2);
+  }
+  .speed-switch button.active{
+    background:rgba(148,163,184,.13);
+    color:#ecf5fc;
+  }
+  .icon-btn{
+    width:36px;height:36px;
+    display:inline-flex;align-items:center;justify-content:center;
+    border:1px solid var(--border);
+    border-radius:10px;
+    background:rgba(3,10,17,.45);
+    color:#9db2c6;
+    cursor:pointer;
+    transition:border-color .18s,color .18s,background .18s,transform .18s;
+  }
+  .icon-btn:hover{
+    border-color:rgba(60,201,247,.35);
+    color:#dff6ff;
+    background:rgba(60,201,247,.07);
+    transform:translateY(-1px);
+  }
+  .icon-btn svg{width:15px;height:15px}
+  .play-btn{
+    height:36px;
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    padding:0 14px;
+    border:1px solid rgba(105,218,250,.55);
+    border-radius:10px;
+    background:linear-gradient(180deg,#7edcf8,#3cc9f7);
+    color:#04131c;
+    font-size:12px;
+    font-weight:720;
+    letter-spacing:.01em;
+    cursor:pointer;
+    box-shadow:0 5px 20px rgba(60,201,247,.18),inset 0 1px 0 rgba(255,255,255,.4);
+    transition:filter .18s,transform .18s;
+  }
+  .play-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
+  .play-btn:active{transform:translateY(0)}
+  .play-btn svg{width:13px;height:13px}
+  .play-btn .ic{display:none}
+  .play-btn:not(.is-playing):not(.is-done) .ic-play{display:block}
+  .play-btn.is-playing .ic-pause{display:block}
+  .play-btn.is-done .ic-replay{display:block}
+  .play-btn.is-done{
+    border-color:rgba(248,191,76,.5);
+    background:linear-gradient(180deg,#ffd37c,#f8bf4c);
+    box-shadow:0 5px 20px rgba(248,191,76,.14),inset 0 1px 0 rgba(255,255,255,.42);
+  }
+
+  /* ---------- Bus status bar ---------- */
+  .busbar{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:9px 18px;
+    margin:0 24px;
+    padding:10px 13px;
+    border:1px solid rgba(148,163,184,.11);
+    border-radius:12px;
+    background:rgba(3,11,18,.58);
+    font-family:var(--mono);
+    font-size:9.5px;
+    letter-spacing:.04em;
+  }
+  .state-item{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    color:var(--dim);
+    white-space:nowrap;
+  }
+  .state-item b{
+    min-width:17px;
+    height:17px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:5px;
+    font-size:9.5px;
+    color:#06111a;
+    background:#65798d;
+    transition:background .16s,box-shadow .16s;
+  }
+  .state-item.scl-state b{background:var(--scl);box-shadow:0 0 12px rgba(60,201,247,.22)}
+  .state-item.sda-state b{background:var(--sda);box-shadow:0 0 12px rgba(248,191,76,.18)}
+  .state-item.is-low b{background:#2f4355;color:#a2b6c8;box-shadow:none}
+  .state-item .tiny-dot{
+    width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.85;
+  }
+  .scl-state{color:#82ddf9}
+  .sda-state{color:#f3cc7d}
+  .driver-item,.clock-item{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    color:var(--dim);
+    white-space:nowrap;
+  }
+  .driver-item b{
+    color:#d7e6f2;
+    font-weight:500;
+    background:rgba(148,163,184,.09);
+    border:1px solid rgba(148,163,184,.13);
+    border-radius:5px;
+    padding:2px 6px;
+    transition:color .18s,border-color .18s,background .18s;
+  }
+  .driver-item b.from-slave{
+    color:#ffc0dc;
+    border-color:rgba(247,125,183,.22);
+    background:rgba(247,125,183,.08);
+  }
+  .clock-item b{color:#dff6ff;font-size:10.5px;font-weight:500;letter-spacing:.08em}
+  .clock-item span{color:#4e6478}
+  .live-stage{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    padding-right:3px;
+    color:#d6e7f3;
+    font-size:9.5px;
+    letter-spacing:.1em;
+    white-space:nowrap;
+  }
+  .live-stage i{
+    width:5px;height:5px;border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 9px rgba(57,220,160,.9);
+  }
+  .busbar .spacer{flex:1}
+  .busbar .hint{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    color:#51677b;
+    font-size:8.5px;
+    letter-spacing:.02em;
+    white-space:nowrap;
+  }
+  .busbar .hint i{
+    width:6px;height:6px;border-radius:50%;
+    border:1.5px solid var(--sda);
+    background:#07111b;
+  }
+
+  /* ---------- Wave area ---------- */
+  .wave-wrap{
+    position:relative;
+    margin-top:12px;
+    padding:2px 14px 0;
+    background:
+      radial-gradient(900px 340px at 50% 30%,rgba(20,68,94,.14),transparent 70%),
+      linear-gradient(180deg,rgba(4,12,20,.42),rgba(4,11,18,.76));
+    border-top:1px solid rgba(148,163,184,.065);
+    border-bottom:1px solid rgba(148,163,184,.065);
+  }
+  .timing-svg{
+    display:block;
+    width:100%;
+    height:auto;
+    font-family:var(--sans);
+    overflow:visible;
+  }
+  .timing-svg text{pointer-events:none}
+  .timing-svg .phase-band rect{
+    transition:stroke .18s,fill .18s;
+  }
+  .timing-svg .phase-band text{
+    font-family:var(--mono);
+    font-size:9px;
+    letter-spacing:.045em;
+  }
+  .timing-svg .phase-band.active rect{
+    stroke-width:1;
+  }
+  .timing-svg .bit-name{
+    font-family:var(--mono);
+    font-size:10.5px;
+    font-weight:500;
+    letter-spacing:.01em;
+  }
+  .timing-svg .bit-value{
+    font-family:var(--mono);
+    font-size:9.5px;
+    font-weight:600;
+  }
+  .timing-svg .lane-name{
+    font-family:var(--mono);
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.09em;
+  }
+  .timing-svg .lane-role{
+    font-family:var(--mono);
+    font-size:8px;
+    letter-spacing:.08em;
+  }
+  .timing-svg .guide{
+    stroke:rgba(148,163,184,.15);
+    stroke-width:1;
+    stroke-dasharray:3 7;
+    vector-effect:non-scaling-stroke;
+  }
+  .timing-svg .column-line{
+    stroke:rgba(148,163,184,.085);
+    stroke-width:1;
+    vector-effect:non-scaling-stroke;
+  }
+  .timing-svg .sample-window{
+    fill:rgba(60,201,247,.028);
+  }
+  .timing-svg .sample-dot{
+    fill:#07111b;
+    stroke:var(--sda);
+    stroke-width:1.6;
+    opacity:.56;
+    vector-effect:non-scaling-stroke;
+  }
+  .timing-svg .ghost-wave{
+    fill:none;
+    stroke-width:2;
+    opacity:.15;
+    vector-effect:non-scaling-stroke;
+  }
+  .timing-svg .ghost-wave.scl-ghost{stroke:#d5eefb}
+  .timing-svg .ghost-wave.sda-ghost{stroke:#f5d596}
+  .timing-svg .active-wave{
+    fill:none;
+    stroke-width:2.8;
+    stroke-linejoin:round;
+    stroke-linecap:round;
+    vector-effect:non-scaling-stroke;
+  }
+  .timing-svg .active-wave.scl-wave{
+    stroke:var(--scl);
+    filter:drop-shadow(0 0 5px rgba(60,201,247,.34));
+  }
+  .timing-svg .active-wave.sda-wave{
+    stroke:var(--sda);
+    filter:drop-shadow(0 0 5px rgba(248,191,76,.28));
+  }
+  .timing-svg .playhead{
+    stroke:rgba(230,244,255,.58);
+    stroke-width:1;
+    stroke-dasharray:2 4;
+    vector-effect:non-scaling-stroke;
+  }
+  .timing-svg .playhead-cap{
+    fill:#f6fbff;
+    filter:drop-shadow(0 0 5px rgba(255,255,255,.75));
+  }
+  .timing-svg .sda-cap{fill:var(--sda);filter:drop-shadow(0 0 6px rgba(248,191,76,.8))}
+  .timing-svg .scl-cap{fill:var(--scl);filter:drop-shadow(0 0 6px rgba(60,201,247,.8))}
+  .timing-svg .sample-window-live{
+    fill:rgba(60,201,247,.055);
+    stroke:rgba(60,201,247,.28);
+    stroke-width:1;
+    stroke-dasharray:3 4;
+    opacity:0;
+    vector-effect:non-scaling-stroke;
+  }
+  .timing-svg .bit-focus{
+    fill:rgba(255,255,255,.032);
+    opacity:0;
+  }
+  .timing-svg .foot-note{
+    font-family:var(--mono);
+    font-size:8.5px;
+    letter-spacing:.035em;
+    fill:#5a7186;
+  }
+
+  /* ---------- Seek row ---------- */
+  .seek-row{
+    display:flex;
+    align-items:center;
+    gap:15px;
+    padding:10px 24px 18px;
+    background:rgba(4,12,20,.54);
+  }
+  .seek{
+    --p:0%;
+    appearance:none;
+    -webkit-appearance:none;
+    flex:1;
+    width:100%;
+    height:24px;
+    margin:0;
+    background:transparent;
+    cursor:pointer;
+  }
+  .seek::-webkit-slider-runnable-track{
+    height:4px;
+    border-radius:99px;
+    background:linear-gradient(to right,var(--scl) 0%,var(--scl) var(--p),rgba(148,163,184,.17) var(--p),rgba(148,163,184,.17) 100%);
+  }
+  .seek::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:14px;height:14px;
+    margin-top:-5px;
+    border-radius:50%;
+    background:#f5fcff;
+    border:3px solid var(--scl);
+    box-shadow:0 0 0 4px rgba(60,201,247,.08),0 0 14px rgba(60,201,247,.28);
+  }
+  .seek::-moz-range-track{
+    height:4px;
+    border-radius:99px;
+    background:rgba(148,163,184,.17);
+  }
+  .seek::-moz-range-progress{
+    height:4px;
+    border-radius:99px;
+    background:var(--scl);
+  }
+  .seek::-moz-range-thumb{
+    width:10px;height:10px;
+    border-radius:50%;
+    background:#f5fcff;
+    border:3px solid var(--scl);
+  }
+  .time-code{
+    width:46px;
+    flex:0 0 46px;
+    text-align:right;
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.06em;
+    color:#a8bccf;
+  }
+
+  /* ---------- Stage strip + readout ---------- */
+  .stage-strip{
+    display:grid;
+    grid-template-columns:repeat(8,minmax(0,1fr));
+    gap:5px;
+    padding:0 24px 14px;
+  }
+  .stage-chip{
+    appearance:none;
+    min-width:0;
+    padding:9px 5px 8px;
+    border:1px solid rgba(148,163,184,.11);
+    border-radius:8px;
+    background:rgba(148,163,184,.025);
+    color:#8095a9;
+    cursor:pointer;
+    text-align:left;
+    transition:background .16s,border-color .16s,color .16s;
+  }
+  .stage-chip:hover{background:rgba(148,163,184,.055);color:#ccd9e4}
+  .stage-chip .n{
+    display:block;
+    font-family:var(--mono);
+    font-size:7.5px;
+    color:#4e6377;
+    margin-bottom:3px;
+    letter-spacing:.08em;
+  }
+  .stage-chip .label{
+    display:block;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:10.5px;
+    letter-spacing:.01em;
+  }
+  .stage-chip.active{
+    color:#f2f9ff;
+    border-color:var(--accent);
+    background:rgba(255,255,255,.045);
+    box-shadow:inset 0 -2px 0 var(--accent),0 0 22px rgba(0,0,0,.16);
+  }
+  .stage-chip.active .n{color:var(--accent)}
+
+  .stage-readout{
+    --accent:var(--scl);
+    display:grid;
+    grid-template-columns:54px minmax(0,1fr) auto;
+    gap:17px;
+    align-items:center;
+    margin:0 24px 21px;
+    padding:17px 19px;
+    border:1px solid rgba(148,163,184,.13);
+    border-radius:15px;
+    background:
+      linear-gradient(135deg,rgba(255,255,255,.027),transparent 38%),
+      rgba(4,12,20,.56);
+    box-shadow:inset 3px 0 0 var(--accent);
+    transition:box-shadow .2s;
+  }
+  .readout-index{
+    font-family:var(--mono);
+    font-size:28px;
+    line-height:1;
+    letter-spacing:-.06em;
+    color:var(--accent);
+    opacity:.95;
+    font-weight:500;
+  }
+  .readout-index small{
+    display:block;
+    margin-top:5px;
+    font-size:7.5px;
+    letter-spacing:.14em;
+    color:#4d6276;
+    font-weight:400;
+  }
+  .readout-kicker{
+    font-family:var(--mono);
+    font-size:8px;
+    letter-spacing:.16em;
+    color:#637a90;
+    text-transform:uppercase;
+  }
+  .readout-title{
+    margin:5px 0 0;
+    font-size:17px;
+    letter-spacing:-.015em;
+    font-weight:650;
+    color:#edf6fd;
+  }
+  .readout-desc{
+    margin:5px 0 0;
+    max-width:780px;
+    color:#8fa3b8;
+    font-size:11.5px;
+    line-height:1.65;
+  }
+  .condition{
+    max-width:270px;
+    padding:9px 11px;
+    border:1px solid rgba(148,163,184,.12);
+    border-radius:8px;
+    background:rgba(0,0,0,.18);
+    color:#b8cbdc;
+    font-family:var(--mono);
+    font-size:9.5px;
+    line-height:1.55;
+    text-align:left;
+    letter-spacing:.015em;
+    white-space:normal;
+  }
+  .condition::before{
+    content:"条件";
+    display:block;
+    margin-bottom:4px;
+    color:#4e6479;
+    font-size:7.5px;
+    letter-spacing:.13em;
+  }
+  .panel-note{
+    display:flex;
+    gap:9px;
+    margin:0 24px 21px;
+    padding-top:13px;
+    border-top:1px solid rgba(148,163,184,.07);
+    color:#52687c;
+    font-size:10.5px;
+    line-height:1.55;
+  }
+  .panel-note svg{width:13px;height:13px;flex:0 0 13px;margin-top:1px}
+
+  /* ---------- Mini cards ---------- */
+  .mini-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:13px;
+  }
+  .mini-card{
+    position:relative;
+    overflow:hidden;
+    padding:17px 17px 16px;
+    border:1px solid rgba(148,163,184,.13);
+    border-radius:16px;
+    background:linear-gradient(155deg,rgba(13,28,42,.85),rgba(7,17,27,.92));
+    box-shadow:0 18px 45px rgba(0,0,0,.13),inset 0 1px 0 rgba(255,255,255,.025);
+    transition:border-color .2s,transform .2s,box-shadow .2s;
+  }
+  .mini-card:hover{
+    transform:translateY(-2px);
+    border-color:rgba(148,163,184,.24);
+    box-shadow:0 24px 55px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .mini-card::before{
+    content:"";
+    position:absolute;
+    left:18px;right:18px;top:0;
+    height:1px;
+    background:linear-gradient(90deg,transparent,rgba(60,201,247,.18),transparent);
+  }
+  .mini-head{
+    display:flex;
+    align-items:center;
+    gap:9px;
+  }
+  .mini-index{
+    font-family:var(--mono);
+    font-size:8.5px;
+    color:#536a7f;
+    letter-spacing:.08em;
+  }
+  .mini-head h3{
+    margin:0;
+    font-size:14px;
+    letter-spacing:-.01em;
+    font-weight:620;
+    color:#e2eef8;
+  }
+  .mini-tag{
+    margin-left:auto;
+    padding:3px 6px;
+    border:1px solid rgba(148,163,184,.13);
+    border-radius:5px;
+    font-family:var(--mono);
+    font-size:7px;
+    letter-spacing:.09em;
+    color:#70879c;
+    text-transform:uppercase;
+    white-space:nowrap;
+  }
+  .mini-wave{
+    margin:12px 0 11px;
+    padding:5px 3px;
+    border:1px solid rgba(148,163,184,.08);
+    border-radius:10px;
+    background:
+      linear-gradient(rgba(148,163,184,.022) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(148,163,184,.022) 1px,transparent 1px),
+      rgba(3,10,17,.42);
+    background-size:18px 18px;
+    overflow:hidden;
+  }
+  .mini-svg{display:block;width:100%;height:auto;overflow:visible}
+  .mini-svg .mini-guide{
+    stroke:rgba(148,163,184,.11);
+    stroke-width:1;
+    stroke-dasharray:2 5;
+    vector-effect:non-scaling-stroke;
+  }
+  .mini-svg .mini-scl{fill:none;stroke:var(--scl);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+  .mini-svg .mini-sda{fill:none;stroke:var(--sda);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+  .mini-svg .mini-lane{font-family:var(--mono);font-size:9px;font-weight:700;fill:#9db3c6;letter-spacing:.07em}
+  .mini-svg .mini-mark{stroke:rgba(232,247,255,.32);stroke-width:1;stroke-dasharray:2 3;vector-effect:non-scaling-stroke}
+  .mini-svg .mini-anno{font-family:var(--mono);font-size:8px;fill:#8ea4b8;letter-spacing:.02em}
+  .mini-svg .mini-anno.scl-txt{fill:#76d8f6}
+  .mini-svg .mini-anno.sda-txt{fill:#f0ca7f}
+  .mini-svg .mini-anno.green{fill:#5ee1b4}
+  .mini-svg .mini-dot{fill:#07111b;stroke:var(--sda);stroke-width:1.8;vector-effect:non-scaling-stroke}
+  .mini-svg .mini-highlight{fill:rgba(248,191,76,.055);stroke:rgba(248,191,76,.2);stroke-width:1;stroke-dasharray:3 4;vector-effect:non-scaling-stroke}
+  .mini-svg .mini-highlight.scl{fill:rgba(60,201,247,.045);stroke:rgba(60,201,247,.18)}
+  .mini-card p{
+    margin:0;
+    color:#8197ac;
+    font-size:11px;
+    line-height:1.65;
+  }
+  .mini-card p code{
+    font-family:var(--mono);
+    font-size:9.5px;
+    color:#c5dae8;
+    padding:1px 4px;
+    border-radius:4px;
+    background:rgba(148,163,184,.08);
+  }
+  .mini-card p b{color:#c1d2e0;font-weight:600}
+
+  /* ---------- Parameters ---------- */
+  .param-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:9px;
+  }
+  .param{
+    display:grid;
+    grid-template-columns:104px minmax(0,1fr);
+    gap:15px;
+    align-items:center;
+    padding:13px 15px;
+    border:1px solid rgba(148,163,184,.11);
+    border-radius:11px;
+    background:rgba(9,21,33,.6);
+  }
+  .param code{
+    font-family:var(--mono);
+    font-size:11px;
+    color:#b8e6f8;
+    letter-spacing:.01em;
+    white-space:nowrap;
+  }
+  .param code sub{font-size:8px;color:#7096a8}
+  .param p{margin:0;color:#8298ac;font-size:10.5px;line-height:1.55}
+  .param p strong{display:block;color:#c4d4e2;font-size:11px;font-weight:600;margin-bottom:2px}
+  .param-note{
+    display:flex;
+    gap:10px;
+    margin-top:13px;
+    padding:12px 14px;
+    border:1px solid rgba(60,201,247,.12);
+    border-radius:10px;
+    background:rgba(60,201,247,.035);
+    color:#7e9aab;
+    font-size:10.5px;
+    line-height:1.6;
+  }
+  .param-note b{color:#b9eaf9;font-weight:600}
+  .param-note svg{width:14px;height:14px;flex:0 0 14px;margin-top:1px;color:var(--scl)}
+
+  /* ---------- Footer ---------- */
+  footer{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    margin-top:52px;
+    padding-top:20px;
+    border-top:1px solid rgba(148,163,184,.09);
+    color:#4c6276;
+    font-family:var(--mono);
+    font-size:9px;
+    letter-spacing:.05em;
+  }
+  footer .marks{display:flex;flex-wrap:wrap;gap:15px}
+  footer .marks span{display:inline-flex;align-items:center;gap:6px}
+  footer .marks i{width:5px;height:5px;border-radius:50%;background:var(--scl)}
+  footer .marks span:nth-child(2) i{background:var(--sda)}
+  footer .marks span:nth-child(3) i{background:var(--green)}
+
+  /* ---------- Responsive ---------- */
+  @media (max-width:1080px){
+    .hero{grid-template-columns:1fr;align-items:start;gap:34px}
+    .principle-card{max-width:640px}
+    .mini-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .stage-strip{grid-template-columns:repeat(4,minmax(0,1fr))}
+  }
+  @media (max-width:850px){
+    .page{padding:26px 18px 44px}
+    .explorer-head{flex-direction:column;gap:17px;padding:20px 18px 17px}
+    .toolbar{justify-content:flex-start;width:100%}
+    .busbar{margin:0 18px}
+    .seek-row{padding-left:18px;padding-right:18px}
+    .stage-strip{padding-left:18px;padding-right:18px}
+    .stage-readout{margin-left:18px;margin-right:18px;grid-template-columns:44px minmax(0,1fr)}
+    .condition{grid-column:2;max-width:none}
+    .panel-note{margin-left:18px;margin-right:18px}
+    .section-head{flex-direction:column;align-items:flex-start;gap:10px;margin-top:44px}
+    .section-head .aside{text-align:left}
+    .param-grid{grid-template-columns:1fr}
+  }
+  @media (max-width:630px){
+    h1{font-size:clamp(38px,11vw,54px)}
+    .hero{padding-top:18px;padding-bottom:38px}
+    .principle-card{padding:19px}
+    .toolbar{gap:7px}
+    .mode-switch button{padding:7px 9px}
+    .speed-switch{display:none}
+    .busbar{gap:8px 13px;padding:9px 10px}
+    .busbar .hint{display:none}
+    .busbar .spacer{display:none}
+    .clock-item{margin-left:auto}
+    .stage-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .stage-readout{grid-template-columns:42px minmax(0,1fr);padding:15px;gap:12px}
+    .readout-index{font-size:23px}
+    .readout-desc{font-size:11px}
+    .mini-grid{grid-template-columns:1fr}
+    .seek-row{gap:10px}
+    .time-code{width:38px;flex-basis:38px;font-size:9.5px}
+    footer{flex-direction:column;align-items:flex-start;gap:12px}
+    .param{grid-template-columns:88px minmax(0,1fr);gap:11px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow"><span class="live-dot"></span> I²C BUS · INTERACTIVE TIMING LAB</div>
+      <h1>
+        <span class="line">两根线，</span>
+        <span class="line grad">读懂 I²C 时序<span class="dot">.</span></span>
+      </h1>
+      <p class="hero-lead">
+        <strong>SCL 是节拍，SDA 是数据。</strong> I²C（IIC）只用两根信号线，就完成了寻址、应答和双向传输。
+        拖动时间轴或播放动画，逐拍看清 START、地址、R/W、ACK、数据与 STOP 如何在两条线上发生。
+      </p>
+      <div class="hero-meta">
+        <span class="meta-chip"><i></i>SCL 时钟线</span>
+        <span class="meta-chip"><i></i>SDA 数据线</span>
+        <span class="meta-chip"><i></i>7 位地址 · MSB 先行</span>
+        <span class="meta-chip"><i></i>读 / 写两种帧</span>
+      </div>
+    </div>
+
+    <aside class="principle-card" aria-label="读图口诀">
+      <div class="principle-head">
+        <h2>读图口诀</h2>
+        <span>HOW TO READ</span>
+      </div>
+      <div class="principle">
+        <span class="n">01</span>
+        <div>
+          <strong><em>SCL 高电平</em> → 采样 SDA</strong>
+          <p>接收方在时钟高电平期间读取数据，SDA 此刻必须稳定。</p>
+        </div>
+      </div>
+      <div class="principle">
+        <span class="n">02</span>
+        <div>
+          <strong><em>SCL 低电平</em> → SDA 允许变化</strong>
+          <p>发送方在时钟低电平期间准备下一位，然后等待 SCL 变高。</p>
+        </div>
+      </div>
+      <div class="principle">
+        <span class="n">03</span>
+        <div>
+          <strong><em>START / STOP</em> 是唯一例外</strong>
+          <p>只有起始和停止条件，才允许 SDA 在 SCL 高电平时跳变。</p>
+        </div>
+      </div>
+      <div class="open-drain">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <path d="M12 3v10m0 0 4-3m-4 3-4-3"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/>
+        </svg>
+        <div><b>开漏总线：</b>两根线都需要上拉电阻。逻辑“1”由电阻拉高，逻辑“0”由器件主动拉低。</div>
+      </div>
+    </aside>
+  </header>
+
+  <section aria-labelledby="explorerTitle">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">01 / FRAME EXPLORER</div>
+        <h2 id="explorerTitle">一帧完整时序，逐拍播放</h2>
+      </div>
+      <div class="aside">黄点是采样点 · 点击下方阶段可跳转 · <code>SDA</code> 与 <code>SCL</code> 同时展示</div>
+    </div>
+
+    <div class="explorer">
+      <div class="explorer-head">
+        <div>
+          <div class="frame-code"><span class="live-dot"></span> FRAME · <b id="frameMode">WRITE</b> · 7-BIT ADDRESS</div>
+          <h3 class="frame-title" id="frameTitle">主机写入一帧</h3>
+          <p class="frame-sub" id="frameSub">地址 0x50 · 写 · 数据 0xA5</p>
+        </div>
+        <div class="toolbar">
+          <div class="mode-switch" role="tablist" aria-label="选择读或写时序">
+            <button type="button" class="active" data-mode="write" role="tab" aria-selected="true">主机写</button>
+            <button type="button" data-mode="read" role="tab" aria-selected="false">主机读</button>
+          </div>
+          <div class="speed-switch" role="group" aria-label="播放速度">
+            <button type="button" data-speed="0.5">0.5×</button>
+            <button type="button" class="active" data-speed="1">1×</button>
+            <button type="button" data-speed="2">2×</button>
+          </div>
+          <button type="button" class="icon-btn" id="restartBtn" aria-label="从头播放" title="从头播放">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>
+            </svg>
+          </button>
+          <button type="button" class="play-btn" id="playBtn" aria-label="暂停动画">
+            <svg class="ic ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12z" fill="currentColor"/></svg>
+            <svg class="ic ic-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 5h3.4v14H6.5zM14.1 5h3.4v14h-3.4z" fill="currentColor"/></svg>
+            <svg class="ic ic-replay" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+            <span id="playLabel">暂停</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="busbar" aria-label="当前总线状态">
+        <span class="live-stage"><i></i><span id="stageTag">空闲</span></span>
+        <span class="state-item scl-state" id="sclState">SCL <b id="sclLevel">1</b></span>
+        <span class="state-item sda-state" id="sdaState">SDA <b id="sdaLevel">1</b></span>
+        <span class="driver-item">SDA 驱动 <b id="driverTag">释放</b></span>
+        <span class="clock-item">时钟 <b id="clockCount">--</b><span>/ 18</span></span>
+        <span class="spacer"></span>
+        <span class="hint"><i></i>采样点</span>
+      </div>
+
+      <div class="wave-wrap">
+        <svg class="timing-svg" id="timingSvg" viewBox="0 0 1220 352" role="img" aria-labelledby="svgTitle svgDesc">
+          <title id="svgTitle">I²C 完整帧时序图</title>
+          <desc id="svgDesc">同时展示 SCL 时钟线和 SDA 数据线：空闲、起始条件、七位地址、读写位、应答位、八位数据、最终应答和停止条件。</desc>
+          <defs>
+            <clipPath id="revealClip"><rect id="revealRect" x="0" y="0" width="0" height="352"></rect></clipPath>
+          </defs>
+
+          <g id="phaseLayers"></g>
+          <g id="columnLayers"></g>
+          <g id="guideLayers"></g>
+          <g id="bitLabels"></g>
+
+          <g id="laneLabels" aria-hidden="true">
+            <text class="lane-name" x="14" y="128" fill="#3cc9f7">SCL</text>
+            <text class="lane-role" x="14" y="142" fill="#57758b">时钟 / 主机</text>
+            <text class="lane-name" x="14" y="228" fill="#f8bf4c">SDA</text>
+            <text class="lane-role" x="14" y="242" fill="#6d6248">数据 / 双向</text>
+          </g>
+
+          <g id="focusLayer" aria-hidden="true">
+            <rect class="bit-focus" id="bitFocus" x="0" y="48" width="55" height="263" rx="6"></rect>
+            <rect class="sample-window-live" id="sampleWindow" x="0" y="150" width="27.5" height="147" rx="3"></rect>
+          </g>
+
+          <path class="ghost-wave scl-ghost" id="sclGhost" d=""></path>
+          <path class="ghost-wave sda-ghost" id="sdaGhost" d=""></path>
+
+          <g clip-path="url(#revealClip)">
+            <path class="active-wave scl-wave" id="sclActive" d=""></path>
+            <path class="active-wave sda-wave" id="sdaActive" d=""></path>
+          </g>
+
+          <line class="playhead" id="playhead" x1="0" y1="48" x2="0" y2="311"></line>
+          <circle class="playhead-cap scl-cap" id="sclDot" cx="0" cy="155" r="4"></circle>
+          <circle class="playhead-cap sda-cap" id="sdaDot" cx="0" cy="255" r="4"></circle>
+
+          <text class="foot-note" x="14" y="334">数据在 SCL 低电平期间改变，在 SCL 高电平期间保持稳定；START / STOP 是唯一例外。</text>
+          <text class="foot-note" x="1206" y="334" text-anchor="end">MSB FIRST →</text>
+        </svg>
+      </div>
+
+      <div class="seek-row">
+        <input class="seek" id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="时间轴" />
+        <span class="time-code" id="timeCode">0%</span>
+      </div>
+
+      <div class="stage-strip" id="stageStrip" aria-label="时序阶段"></div>
+
+      <div class="stage-readout" id="stageReadout">
+        <div class="readout-index"><span id="stageNo">01</span><small>/ 08</small></div>
+        <div>
+          <div class="readout-kicker" id="stageKicker">BUS FREE</div>
+          <h4 class="readout-title" id="stageTitle">总线空闲</h4>
+          <p class="readout-desc" id="stageDesc">SCL 与 SDA 都被上拉电阻保持为高。总线空闲，等待主机发起传输。</p>
+        </div>
+        <div class="condition" id="stageCond">SCL = 1 · SDA = 1</div>
+      </div>
+
+      <div class="panel-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10.7V17"/><path d="M12 7.2h.01"/></svg>
+        <span>本图采用 7 位地址、单字节传输；10 位地址、时钟同步、总线仲裁和多主机冲突未在主动画中展开。</span>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="minisTitle">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">02 / EDGE CASES</div>
+        <h2 id="minisTitle">六个关键瞬间，别把边沿看反</h2>
+      </div>
+      <div class="aside">所有特例都围绕同一件事：<code>SDA</code> 什么时候允许变化。</div>
+    </div>
+
+    <div class="mini-grid">
+      <article class="mini-card">
+        <div class="mini-head"><span class="mini-index">01</span><h3>START 起始条件</h3><span class="mini-tag">边沿</span></div>
+        <div class="mini-wave" data-mini="start"></div>
+        <p><b>SCL 保持高，SDA 由高变低。</b> 这是总线从空闲进入传输的唯一入口。</p>
+      </article>
+
+      <article class="mini-card">
+        <div class="mini-head"><span class="mini-index">02</span><h3>STOP 停止条件</h3><span class="mini-tag">边沿</span></div>
+        <div class="mini-wave" data-mini="stop"></div>
+        <p><b>SCL 保持高，SDA 由低变高。</b> 停止后总线回到空闲，可开始下一帧。</p>
+      </article>
+
+      <article class="mini-card">
+        <div class="mini-head"><span class="mini-index">03</span><h3>数据有效窗口</h3><span class="mini-tag">采样</span></div>
+        <div class="mini-wave" data-mini="data"></div>
+        <p><b>SCL 低时换数据，SCL 高时读数据。</b> 高电平窗口内 SDA 必须稳定，不能抖动。</p>
+      </article>
+
+      <article class="mini-card">
+        <div class="mini-head"><span class="mini-index">04</span><h3>ACK / NACK</h3><span class="mini-tag">第 9 拍</span></div>
+        <div class="mini-wave" data-mini="ack"></div>
+        <p><b>ACK：</b>接收方把 SDA 拉低。 <b>NACK：</b>接收方释放 SDA，让它保持高。主机靠它判断从机是否在线。</p>
+      </article>
+
+      <article class="mini-card">
+        <div class="mini-head"><span class="mini-index">05</span><h3>Clock Stretching</h3><span class="mini-tag">延展</span></div>
+        <div class="mini-wave" data-mini="stretch"></div>
+        <p><b>从机把 SCL 继续拉低。</b> 主机释放 SCL 后不能立刻发下一拍，必须等从机真正释放。</p>
+      </article>
+
+      <article class="mini-card">
+        <div class="mini-head"><span class="mini-index">06</span><h3>Repeated START</h3><span class="mini-tag">Sr</span></div>
+        <div class="mini-wave" data-mini="repeat"></div>
+        <p><b>不发 STOP，直接再来一个 START。</b> 常用于切换读写方向，或先写寄存器地址再读数据。</p>
+      </article>
+    </div>
+  </section>
+
+  <section aria-labelledby="paramsTitle">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">03 / TIMING PARAMETERS</div>
+        <h2 id="paramsTitle">真正画进数据手册的，是这些时间</h2>
+      </div>
+      <div class="aside">具体数值取决于标准模式 / 快速模式与器件手册，图中只解释含义。</div>
+    </div>
+
+    <div class="param-grid">
+      <div class="param">
+        <code>t<sub>SU;DAT</sub></code>
+        <p><strong>数据建立时间</strong>SCL 变高之前，SDA 必须已经稳定。</p>
+      </div>
+      <div class="param">
+        <code>t<sub>HD;DAT</sub></code>
+        <p><strong>数据保持时间</strong>SCL 变低之后，SDA 还要保持一小段时间。</p>
+      </div>
+      <div class="param">
+        <code>t<sub>SU;STA</sub></code>
+        <p><strong>起始建立时间</strong>START 之前，SCL 必须已经为高。</p>
+      </div>
+      <div class="param">
+        <code>t<sub>HD;STA</sub></code>
+        <p><strong>起始保持时间</strong>SDA 下降后，SCL 不能立刻下降。</p>
+      </div>
+      <div class="param">
+        <code>t<sub>SU;STO</sub></code>
+        <p><strong>停止建立时间</strong>STOP 之前，SCL 必须保持高电平。</p>
+      </div>
+      <div class="param">
+        <code>t<sub>BUF</sub></code>
+        <p><strong>总线空闲时间</strong>STOP 到下一个 START 之间的最小间隔。</p>
+      </div>
+    </div>
+
+    <div class="param-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3v18"/><path d="M7 7h10M7 17h10"/></svg>
+      <span><b>记忆顺序：</b>先看 SCL 高低，再看 SDA 是否稳定，最后看 START / STOP 边沿。只要这三步不乱，任何 I²C 波形都能拆开读。</span>
+    </div>
+  </section>
+
+  <footer>
+    <span>I²C TIMING LAB · SCL + SDA · 7-BIT ADDRESS</span>
+    <div class="marks">
+      <span><i></i>SCL 时钟</span>
+      <span><i></i>SDA 数据</span>
+      <span><i></i>采样窗口</span>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const BW = 55;
+  const X0 = 120;
+  const X_START = 70;
+  const N = 18;
+  const END = X0 + N * BW;          // 1110
+  const TOTAL = END + BW + 30;      // 1195
+  const BASE_MS = 21000;
+  const Y = { sclH: 155, sclL: 195, sdaH: 255, sdaL: 295 };
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const MODES = {
+    write: {
+      key: "write",
+      title: "主机写入一帧",
+      sub: "地址 0x50 · 写 · 数据 0xA5",
+      modeLabel: "WRITE",
+      addr: "1010000",
+      rw: 0,
+      data: "10100101",
+      ackAddr: 0,
+      ackData: 0
+    },
+    read: {
+      key: "read",
+      title: "主机读取一帧",
+      sub: "地址 0x50 · 读 · 数据 0x3C",
+      modeLabel: "READ",
+      addr: "1010000",
+      rw: 1,
+      data: "00111100",
+      ackAddr: 0,
+      ackData: 1
+    }
+  };
+
+  const STAGES = [
+    { id: "idle",    a: 0,               b: X_START,          short: "空闲",  group: "空闲",       color: "#94a3b8", kicker: "BUS FREE" },
+    { id: "start",   a: X_START,         b: X0,               short: "START", group: "START",      color: "#39dca0", kicker: "START CONDITION" },
+    { id: "address", a: X0,              b: X0 + 7 * BW,      short: "地址",  group: "7 位地址",    color: "#3cc9f7", kicker: "ADDRESS FRAME" },
+    { id: "rw",      a: X0 + 7 * BW,     b: X0 + 8 * BW,      short: "R/W",   group: "R/W",        color: "#b393fb", kicker: "READ / WRITE BIT" },
+    { id: "ackAddr", a: X0 + 8 * BW,     b: X0 + 9 * BW,      short: "ACK·址", group: "ACK",       color: "#f77db7", kicker: "ACKNOWLEDGE" },
+    { id: "data",    a: X0 + 9 * BW,     b: X0 + 17 * BW,     short: "数据",  group: "8 位数据",    color: "#f8bf4c", kicker: "DATA FRAME" },
+    { id: "ackData", a: X0 + 17 * BW,    b: END,              short: "ACK·数", group: "ACK",       color: "#f77db7", kicker: "FINAL ACK" },
+    { id: "stop",    a: END,             b: TOTAL,            short: "STOP",  group: "STOP",       color: "#ff8095", kicker: "STOP CONDITION" }
+  ];
+
+  const state = {
+    mode: "write",
+    progress: 0,
+    playing: !reduceMotion,
+    speed: 1,
+    segments: null,
+    bits: [],
+    lastStage: null,
+    lastTime: 0
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const svgEls = {
+    phase: $("phaseLayers"),
+    columns: $("columnLayers"),
+    guides: $("guideLayers"),
+    bits: $("bitLabels"),
+    reveal: $("revealRect"),
+    sclGhost: $("sclGhost"),
+    sdaGhost: $("sdaGhost"),
+    sclActive: $("sclActive"),
+    sdaActive: $("sdaActive"),
+    playhead: $("playhead"),
+    sclDot: $("sclDot"),
+    sdaDot: $("sdaDot"),
+    bitFocus: $("bitFocus"),
+    sampleWindow: $("sampleWindow")
+  };
+
+  function hexA(hex, alpha) {
+    const h = hex.replace("#", "");
+    const full = h.length === 3 ? h.split("").map(c => c + c).join("") : h;
+    const n = parseInt(full, 16);
+    return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + alpha + ")";
+  }
+
+  function bitsFor(mode) {
+    const m = MODES[mode];
+    return [
+      ...m.addr.split("").map(Number),
+      m.rw,
+      m.ackAddr,
+      ...m.data.split("").map(Number),
+      m.ackData
+    ];
+  }
+
+  function buildSegments(bits) {
+    const scl = [{ a: 0, b: X0, v: 1 }];
+    for (let i = 0; i < N; i++) {
+      const x = X0 + i * BW;
+      scl.push({ a: x, b: x + BW / 2, v: 0 });
+      scl.push({ a: x + BW / 2, b: x + BW, v: 1 });
+    }
+    scl.push({ a: END, b: END + BW / 2, v: 0 });
+    scl.push({ a: END + BW / 2, b: TOTAL, v: 1 });
+
+    const sda = [
+      { a: 0, b: X_START + 12, v: 1 },
+      { a: X_START + 12, b: X0 + 5, v: 0 }
+    ];
+    for (let i = 0; i < N; i++) {
+      const start = X0 + i * BW + 5;
+      const end = i === N - 1 ? END + 5 : start + BW;
+      sda.push({ a: start, b: end, v: bits[i] });
+    }
+    sda.push({ a: END + 5, b: END + BW * 0.78, v: 0 });
+    sda.push({ a: END + BW * 0.78, b: TOTAL, v: 1 });
+
+    return { scl, sda };
+  }
+
+  function pathFrom(segments, highY, lowY) {
+    const yOf = (v) => v ? highY : lowY;
+    let d = "M " + segments[0].a + " " + yOf(segments[0].v);
+    for (let i = 1; i < segments.length; i++) {
+      const prev = segments[i - 1];
+      const cur = segments[i];
+      if (prev.v !== cur.v) {
+        d += " L " + cur.a + " " + yOf(prev.v) + " L " + cur.a + " " + yOf(cur.v);
+      } else {
+        d += " L " + cur.a + " " + yOf(cur.v);
+      }
+      d += " L " + cur.b + " " + yOf(cur.v);
+    }
+    return d;
+  }
+
+  function levelAt(segments, x) {
+    for (let i = 0; i < segments.length; i++) {
+      const s = segments[i];
+      if (x >= s.a && x < s.b) return s.v;
+    }
+    return segments[segments.length - 1].v;
+  }
+
+  function stageAt(x) {
+    for (let i = 0; i < STAGES.length; i++) {
+      if (x >= STAGES[i].a && x < STAGES[i].b) return STAGES[i];
+    }
+    return STAGES[STAGES.length - 1];
+  }
+
+  function modeData() { return MODES[state.mode]; }
+
+  function stageInfo(stage) {
+    const m = modeData();
+    const rwText = m.rw ? "读" : "写";
+    switch (stage.id) {
+      case "idle":
+        return {
+          title: "总线空闲",
+          desc: "SCL 与 SDA 都被上拉电阻保持为高。此时没有器件在驱动总线，主机可以发起新的传输。",
+          cond: "SCL = 1 · SDA = 1"
+        };
+      case "start":
+        return {
+          title: "起始条件 START",
+          desc: "SCL 保持高电平，主机把 SDA 从高拉低。这个下降沿告诉所有从机：一帧传输开始了。",
+          cond: "SCL = 1 · SDA 1 → 0"
+        };
+      case "address":
+        return {
+          title: "7 位从机地址",
+          desc: "主机按 MSB 先行，把 7 位地址 " + m.addr + "（0x50）逐位送到 SDA。每一位都在 SCL 高电平期间被采样。",
+          cond: "A6…A0 = " + m.addr
+        };
+      case "rw":
+        return {
+          title: "R/W 读写位",
+          desc: m.rw
+            ? "第 8 个时钟发送 R/W = 1，表示主机要读取从机数据。随后从机在第 9 个时钟应答。"
+            : "第 8 个时钟发送 R/W = 0，表示主机要写入从机。随后从机在第 9 个时钟应答。",
+          cond: "R/W = " + m.rw + " （" + rwText + "）"
+        };
+      case "ackAddr":
+        return {
+          title: "从机应答 ACK",
+          desc: "第 9 个时钟，主机释放 SDA，被寻址的从机把 SDA 拉低。看到 ACK = 0，主机才知道从机在线。",
+          cond: "ACK = 0 · SDA 被从机拉低"
+        };
+      case "data":
+        return m.rw
+          ? {
+              title: "从机发送 8 位数据",
+              desc: "从机把数据 0x3C（" + m.data + "）逐位放到 SDA 上，主机在 SCL 高电平期间采样。每字节仍然是 8 位、MSB 先行。",
+              cond: "数据 = " + m.data + " · 从机驱动 SDA"
+            }
+          : {
+              title: "主机发送 8 位数据",
+              desc: "主机把数据 0xA5（" + m.data + "）逐位放到 SDA 上，从机在 SCL 高电平期间采样。每字节 8 位、MSB 先行。",
+              cond: "数据 = " + m.data + " · 主机驱动 SDA"
+            };
+      case "ackData":
+        return m.rw
+          ? {
+              title: "主机返回 NACK",
+              desc: "最后一个数据字节之后，主机不拉低 SDA，而是让它保持高电平，这就是 NACK，用来告诉从机“不要再发了”。",
+              cond: "NACK = 1 · SDA 保持高"
+            }
+          : {
+              title: "从机再次 ACK",
+              desc: "从机收到一个数据字节后，在第 9 个时钟再次把 SDA 拉低，表示这个字节已经成功接收。",
+              cond: "ACK = 0 · SDA 被从机拉低"
+            };
+      case "stop":
+      default:
+        return m.rw
+          ? {
+              title: "停止条件 STOP",
+              desc: "主机先在 SCL 低电平时把 SDA 拉低，SCL 变高后释放 SDA，让它在 SCL 高电平期间上升，形成 STOP，总线回到空闲。",
+              cond: "SCL 高 · SDA 0 → 1"
+            }
+          : {
+              title: "停止条件 STOP",
+              desc: "最后一个 ACK 后 SCL 拉低；主机保持 SDA 低，再让 SCL 变高，最后释放 SDA 形成上升沿，总线回到空闲。",
+              cond: "SCL 高 · SDA 0 → 1"
+            };
+    }
+  }
+
+  function stageShort(stage) {
+    return stage.group;
+  }
+
+  function buildExplorer() {
+    const m = modeData();
+    const bits = bitsFor(state.mode);
+    state.bits = bits;
+    state.segments = buildSegments(bits);
+
+    const phaseHtml = STAGES.map((s, i) => {
+      const color = s.color;
+      return '<g class="phase-band" data-stage="' + s.id + '">' +
+        '<rect x="' + s.a + '" y="16" width="' + (s.b - s.a) + '" height="27" rx="6" fill="' + hexA(color, 0.08) + '" stroke="' + hexA(color, 0.22) + '"></rect>' +
+        '<text x="' + ((s.a + s.b) / 2) + '" y="33.5" text-anchor="middle" fill="' + color + '">' + stageShort(s) + '</text>' +
+        '</g>';
+    }).join("");
+    svgEls.phase.innerHTML = phaseHtml;
+
+    const columnHtml = [];
+    const guides = [];
+    const labels = [];
+    for (let i = 0; i < N; i++) {
+      const x = X0 + i * BW;
+      if (i % 2 === 0) {
+        columnHtml.push('<rect x="' + x + '" y="48" width="' + BW + '" height="263" fill="rgba(255,255,255,.012)"></rect>');
+      }
+      if (i === 7) {
+        columnHtml.push('<rect x="' + x + '" y="48" width="' + BW + '" height="263" fill="rgba(179,147,251,.035)"></rect>');
+      }
+      if (i === 8 || i === 17) {
+        columnHtml.push('<rect x="' + x + '" y="48" width="' + BW + '" height="263" fill="rgba(247,125,183,.035)"></rect>');
+      }
+      columnHtml.push('<rect class="sample-window" x="' + (x + BW / 2) + '" y="150" width="' + (BW / 2) + '" height="147"></rect>');
+      columnHtml.push('<line class="column-line" x1="' + x + '" y1="48" x2="' + x + '" y2="311"></line>');
+
+      const name = bitName(i);
+      const nameColor = bitNameColor(i);
+      labels.push('<text class="bit-name" x="' + (x + BW / 2) + '" y="63" text-anchor="middle" fill="' + nameColor + '">' + name + '</text>');
+      labels.push('<text class="bit-value" x="' + (x + BW / 2) + '" y="82" text-anchor="middle" fill="' + (bits[i] ? "#e9f1f9" : "#64798d") + '">' + bits[i] + '</text>');
+
+      const sdaY = bits[i] ? Y.sdaH : Y.sdaL;
+      labels.push('<circle class="sample-dot" cx="' + (x + BW / 2) + '" cy="' + sdaY + '" r="3.1"></circle>');
+    }
+    columnHtml.push('<line class="column-line" x1="' + END + '" y1="48" x2="' + END + '" y2="311"></line>');
+    columnHtml.push('<line class="column-line" x1="' + TOTAL + '" y1="48" x2="' + TOTAL + '" y2="311"></line>');
+    svgEls.columns.innerHTML = columnHtml.join("");
+
+    guides.push('<line class="guide" x1="0" y1="' + Y.sclH + '" x2="' + TOTAL + '" y2="' + Y.sclH + '"></line>');
+    guides.push('<line class="guide" x1="0" y1="' + Y.sclL + '" x2="' + TOTAL + '" y2="' + Y.sclL + '"></line>');
+    guides.push('<line class="guide" x1="0" y1="' + Y.sdaH + '" x2="' + TOTAL + '" y2="' + Y.sdaH + '"></line>');
+    guides.push('<line class="guide" x1="0" y1="' + Y.sdaL + '" x2="' + TOTAL + '" y2="' + Y.sdaL + '"></line>');
+    svgEls.guides.innerHTML = guides.join("");
+    svgEls.bits.innerHTML = labels.join("");
+
+    const sclPath = pathFrom(state.segments.scl, Y.sclH, Y.sclL);
+    const sdaPath = pathFrom(state.segments.sda, Y.sdaH, Y.sdaL);
+
+    svgEls.sclGhost.setAttribute("d", sclPath);
+    svgEls.sdaGhost.setAttribute("d", sdaPath);
+    svgEls.sclActive.setAttribute("d", sclPath);
+    svgEls.sdaActive.setAttribute("d", sdaPath);
+
+    $("frameTitle").textContent = m.title;
+    $("frameSub").textContent = m.sub;
+    $("frameMode").textContent = m.modeLabel;
+
+    document.querySelectorAll(".mode-switch button").forEach(btn => {
+      const active = btn.dataset.mode === state.mode;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-selected", active ? "true" : "false");
+    });
+
+    state.lastStage = null;
+  }
+
+  function bitName(i) {
+    if (i < 7) return "A" + (6 - i);
+    if (i === 7) return "R/W";
+    if (i === 8) return "ACK";
+    if (i < 17) return "D" + (16 - i);
+    return "ACK";
+  }
+
+  function bitNameColor(i) {
+    if (i < 7) return "#89defa";
+    if (i === 7) return "#c6b5ff";
+    if (i === 8 || i === 17) return "#ffa7cd";
+    return "#f4d08a";
+  }
+
+  function buildStageStrip() {
+    $("stageStrip").innerHTML = STAGES.map((s, i) =>
+      '<button type="button" class="stage-chip" data-stage="' + s.id + '" style="--accent:' + s.color + '" aria-label="跳转到' + s.group + '阶段">' +
+        '<span class="n">' + String(i + 1).padStart(2, "0") + '</span>' +
+        '<span class="label">' + s.short + '</span>' +
+      '</button>'
+    ).join("");
+  }
+
+  function updateStage(stage) {
+    const info = stageInfo(stage);
+    const index = STAGES.findIndex(s => s.id === stage.id);
+    const readout = $("stageReadout");
+    readout.style.setProperty("--accent", stage.color);
+    $("stageNo").textContent = String(index + 1).padStart(2, "0");
+    $("stageKicker").textContent = stage.kicker;
+    $("stageTitle").textContent = info.title;
+    $("stageDesc").textContent = info.desc;
+    $("stageCond").textContent = info.cond;
+    $("stageTag").textContent = stage.group;
+
+    document.querySelectorAll(".stage-chip").forEach(chip => {
+      chip.classList.toggle("active", chip.dataset.stage === stage.id);
+    });
+    document.querySelectorAll(".phase-band").forEach((band) => {
+      const active = band.dataset.stage === stage.id;
+      band.classList.toggle("active", active);
+      const rect = band.querySelector("rect");
+      if (rect) {
+        const stageDef = STAGES.find(s => s.id === band.dataset.stage);
+        rect.setAttribute("fill", hexA(stageDef.color, active ? 0.16 : 0.08));
+        rect.setAttribute("stroke", hexA(stageDef.color, active ? 0.62 : 0.22));
+      }
+      band.style.opacity = active ? "1" : ".72";
+    });
+  }
+
+  function driverAt(x, stage) {
+    if (stage.id === "idle") return "释放";
+    if (stage.id === "ackAddr") return "从机";
+    if (stage.id === "data") return state.mode === "read" ? "从机" : "主机";
+    if (stage.id === "ackData") return state.mode === "read" ? "主机" : "从机";
+    return "主机";
+  }
+
+  function render() {
+    const px = state.progress * TOTAL;
+    const stage = stageAt(px);
+    const m = modeData();
+
+    svgEls.reveal.setAttribute("width", px.toFixed(2));
+    svgEls.playhead.setAttribute("x1", px.toFixed(2));
+    svgEls.playhead.setAttribute("x2", px.toFixed(2));
+
+    const scl = levelAt(state.segments.scl, px);
+    const sda = levelAt(state.segments.sda, px);
+    const sclY = scl ? Y.sclH : Y.sclL;
+    const sdaY = sda ? Y.sdaH : Y.sdaL;
+    svgEls.sclDot.setAttribute("cx", px.toFixed(2));
+    svgEls.sdaDot.setAttribute("cx", px.toFixed(2));
+    svgEls.sclDot.setAttribute("cy", sclY);
+    svgEls.sdaDot.setAttribute("cy", sdaY);
+
+    $("sclLevel").textContent = scl;
+    $("sdaLevel").textContent = sda;
+    $("sclState").classList.toggle("is-low", !scl);
+    $("sdaState").classList.toggle("is-low", !sda);
+
+    const driver = driverAt(px, stage);
+    const driverEl = $("driverTag");
+    driverEl.textContent = driver;
+    driverEl.classList.toggle("from-slave", driver === "从机");
+
+    let bitIndex = -1;
+    if (px >= X0 && px < END) bitIndex = Math.min(N - 1, Math.floor((px - X0) / BW));
+    $("clockCount").textContent = bitIndex >= 0 ? String(bitIndex + 1).padStart(2, "0") : "--";
+
+    // Focus the current bit and its high-level sampling window.
+    if (bitIndex >= 0) {
+      const bitX = X0 + bitIndex * BW;
+      svgEls.bitFocus.setAttribute("x", bitX);
+      svgEls.bitFocus.setAttribute("opacity", "1");
+      const highStart = bitX + BW / 2;
+      if (px >= highStart) {
+        svgEls.sampleWindow.setAttribute("x", highStart);
+        svgEls.sampleWindow.setAttribute("opacity", "1");
+      } else {
+        svgEls.sampleWindow.setAttribute("opacity", "0");
+      }
+    } else {
+      svgEls.bitFocus.setAttribute("opacity", "0");
+      svgEls.sampleWindow.setAttribute("opacity", "0");
+    }
+
+    $("seek").value = String(Math.round(state.progress * 1000));
+    $("seek").style.setProperty("--p", (state.progress * 100).toFixed(2) + "%");
+    $("timeCode").textContent = Math.round(state.progress * 100) + "%";
+
+    if (state.lastStage !== stage.id) {
+      updateStage(stage);
+      state.lastStage = stage.id;
+    }
+  }
+
+  function updatePlayButton() {
+    const btn = $("playBtn");
+    const done = state.progress >= 0.999;
+    btn.classList.toggle("is-playing", state.playing);
+    btn.classList.toggle("is-done", !state.playing && done);
+    $("playLabel").textContent = state.playing ? "暂停" : (done ? "重播" : "播放");
+    btn.setAttribute("aria-label", state.playing ? "暂停动画" : (done ? "重播动画" : "播放动画"));
+  }
+
+  function setProgress(p) {
+    state.progress = Math.max(0, Math.min(1, p));
+    render();
+  }
+
+  function play() {
+    if (state.progress >= 0.999) state.progress = 0;
+    state.playing = true;
+    state.lastTime = 0;
+    updatePlayButton();
+    render();
+  }
+
+  function pause() {
+    state.playing = false;
+    updatePlayButton();
+  }
+
+  function restart() {
+    state.progress = 0;
+    state.lastStage = null;
+    state.playing = true;
+    state.lastTime = 0;
+    updatePlayButton();
+    render();
+  }
+
+  function switchMode(mode) {
+    if (mode === state.mode) return;
+    state.mode = mode;
+    state.progress = 0;
+    state.lastStage = null;
+    state.playing = true;
+    state.lastTime = 0;
+    buildExplorer();
+    buildStageStrip();
+    render();
+    updatePlayButton();
+  }
+
+  function loop(t) {
+    if (!state.lastTime) state.lastTime = t;
+    const dt = Math.min(90, t - state.lastTime);
+    state.lastTime = t;
+
+    if (state.playing) {
+      state.progress += (dt / BASE_MS) * state.speed;
+      if (state.progress >= 1) {
+        state.progress = 1;
+        state.playing = false;
+        updatePlayButton();
+      }
+      render();
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function bind() {
+    $("playBtn").addEventListener("click", () => {
+      if (state.playing) pause();
+      else play();
+    });
+    $("restartBtn").addEventListener("click", restart);
+
+    document.querySelectorAll(".mode-switch button").forEach(btn => {
+      btn.addEventListener("click", () => switchMode(btn.dataset.mode));
+    });
+    document.querySelectorAll(".speed-switch button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.speed = Number(btn.dataset.speed);
+        document.querySelectorAll(".speed-switch button").forEach(b => {
+          b.classList.toggle("active", b === btn);
+        });
+      });
+    });
+
+    $("seek").addEventListener("input", (e) => {
+      if (state.playing) pause();
+      setProgress(Number(e.target.value) / 1000);
+    });
+
+    $("stageStrip").addEventListener("click", (e) => {
+      const chip = e.target.closest(".stage-chip");
+      if (!chip) return;
+      const stage = STAGES.find(s => s.id === chip.dataset.stage);
+      if (!stage) return;
+      setProgress((stage.a + 0.5) / TOTAL);
+    });
+
+    document.querySelectorAll(".phase-band").forEach(band => {
+      band.addEventListener("click", () => {
+        const stage = STAGES.find(s => s.id === band.dataset.stage);
+        if (stage) setProgress((stage.a + 0.5) / TOTAL);
+      });
+    });
+  }
+
+  // ---- Mini waveform cards ----
+  const MINI = {
+    start: {
+      alt: "SCL 高电平时 SDA 由高变低，形成 START 条件",
+      scl: [{ a: 58, b: 170, v: 1 }, { a: 170, b: 250, v: 0 }, { a: 250, b: 462, v: 1 }],
+      sda: [{ a: 58, b: 110, v: 1 }, { a: 110, b: 462, v: 0 }],
+      marks: [{ x: 110, label: "SDA 1→0" }],
+      notes: [{ x: 286, y: 31, text: "SCL 保持高", cls: "scl-txt" }]
+    },
+    stop: {
+      alt: "SCL 高电平时 SDA 由低变高，形成 STOP 条件",
+      scl: [{ a: 58, b: 82, v: 0 }, { a: 82, b: 462, v: 1 }],
+      sda: [{ a: 58, b: 205, v: 0 }, { a: 205, b: 462, v: 1 }],
+      marks: [{ x: 205, label: "SDA 0→1" }],
+      notes: [{ x: 282, y: 31, text: "SCL 保持高", cls: "scl-txt" }]
+    },
+    data: {
+      alt: "SDA 在 SCL 低电平时变化，在 SCL 高电平时保持稳定",
+      scl: [{ a: 58, b: 120, v: 0 }, { a: 120, b: 180, v: 1 }, { a: 180, b: 240, v: 0 }, { a: 240, b: 300, v: 1 }, { a: 300, b: 360, v: 0 }, { a: 360, b: 420, v: 1 }, { a: 420, b: 462, v: 0 }],
+      sda: [{ a: 58, b: 92, v: 1 }, { a: 92, b: 200, v: 0 }, { a: 200, b: 330, v: 1 }, { a: 330, b: 462, v: 0 }],
+      highlights: [{ x: 120, w: 60, cls: "scl" }, { x: 240, w: 60, cls: "scl" }],
+      dots: [{ x: 150, y: 144 }, { x: 270, y: 116 }],
+      marks: [{ x: 92, label: "变化" }, { x: 200, label: "变化" }],
+      notes: [{ x: 150, y: 31, text: "采样", cls: "scl-txt" }, { x: 270, y: 31, text: "采样", cls: "scl-txt" }]
+    },
+    ack: {
+      alt: "第一个应答时钟 SDA 为低表示 ACK，第二个时钟 SDA 为高表示 NACK",
+      scl: [{ a: 58, b: 100, v: 0 }, { a: 100, b: 180, v: 1 }, { a: 180, b: 220, v: 0 }, { a: 220, b: 300, v: 1 }, { a: 300, b: 462, v: 0 }],
+      sda: [{ a: 58, b: 90, v: 1 }, { a: 90, b: 200, v: 0 }, { a: 200, b: 462, v: 1 }],
+      dots: [{ x: 140, y: 144 }, { x: 260, y: 116 }],
+      marks: [{ x: 100, label: "释放" }, { x: 200, label: "释放" }],
+      notes: [{ x: 140, y: 31, text: "ACK = 0", cls: "green" }, { x: 260, y: 31, text: "NACK = 1", cls: "sda-txt" }]
+    },
+    stretch: {
+      alt: "从机把 SCL 保持在低电平，主机等待时钟延展结束",
+      scl: [{ a: 58, b: 100, v: 1 }, { a: 100, b: 280, v: 0 }, { a: 280, b: 370, v: 1 }, { a: 370, b: 420, v: 0 }, { a: 420, b: 462, v: 1 }],
+      sda: [{ a: 58, b: 160, v: 1 }, { a: 160, b: 385, v: 0 }, { a: 385, b: 462, v: 1 }],
+      highlights: [{ x: 100, w: 180, cls: "" }],
+      marks: [{ x: 100, label: "主机释放" }, { x: 280, label: "从机释放" }],
+      notes: [{ x: 190, y: 31, text: "从机拉住 SCL", cls: "sda-txt" }]
+    },
+    repeat: {
+      alt: "没有 STOP，SCL 高电平时 SDA 再次下降，形成重复起始 Sr",
+      scl: [{ a: 58, b: 100, v: 0 }, { a: 100, b: 190, v: 1 }, { a: 190, b: 230, v: 0 }, { a: 230, b: 330, v: 1 }, { a: 330, b: 380, v: 0 }, { a: 380, b: 462, v: 1 }],
+      sda: [{ a: 58, b: 95, v: 0 }, { a: 95, b: 285, v: 1 }, { a: 285, b: 330, v: 0 }, { a: 330, b: 462, v: 1 }],
+      marks: [{ x: 285, label: "Sr：SDA ↓" }],
+      notes: [{ x: 346, y: 31, text: "SCL=1", cls: "scl-txt" }]
+    }
+  };
+
+  function miniPath(segments, highY, lowY) {
+    return pathFrom(segments, highY, lowY);
+  }
+
+  function buildMini(cfg) {
+    const ySH = 54, ySL = 82, yDH = 116, yDL = 144;
+    const highlights = (cfg.highlights || []).map(h =>
+      '<rect class="mini-highlight ' + (h.cls || "") + '" x="' + h.x + '" y="42" width="' + h.w + '" height="112" rx="4"></rect>'
+    ).join("");
+    const marks = (cfg.marks || []).map(m =>
+      '<line class="mini-mark" x1="' + m.x + '" y1="28" x2="' + m.x + '" y2="153"></line>' +
+      '<text class="mini-anno" x="' + m.x + '" y="19" text-anchor="middle">' + m.label + '</text>'
+    ).join("");
+    const notes = (cfg.notes || []).map(n =>
+      '<text class="mini-anno ' + (n.cls || "") + '" x="' + n.x + '" y="' + n.y + '" text-anchor="middle">' + n.text + '</text>'
+    ).join("");
+    const dots = (cfg.dots || []).map(d =>
+      '<circle class="mini-dot" cx="' + d.x + '" cy="' + d.y + '" r="3.2"></circle>'
+    ).join("");
+
+    return '<svg class="mini-svg" viewBox="0 0 480 160" role="img" aria-label="' + cfg.alt + '">' +
+      '<line class="mini-guide" x1="58" y1="' + ySH + '" x2="462" y2="' + ySH + '"></line>' +
+      '<line class="mini-guide" x1="58" y1="' + ySL + '" x2="462" y2="' + ySL + '"></line>' +
+      '<line class="mini-guide" x1="58" y1="' + yDH + '" x2="462" y2="' + yDH + '"></line>' +
+      '<line class="mini-guide" x1="58" y1="' + yDL + '" x2="462" y2="' + yDL + '"></line>' +
+      highlights +
+      '<text class="mini-lane" x="10" y="' + (ySH + 7) + '">SCL</text>' +
+      '<text class="mini-lane" x="10" y="' + (yDH + 7) + '">SDA</text>' +
+      marks + notes +
+      '<path class="mini-scl" d="' + miniPath(cfg.scl, ySH, ySL) + '"></path>' +
+      '<path class="mini-sda" d="' + miniPath(cfg.sda, yDH, yDL) + '"></path>' +
+      dots +
+      '</svg>';
+  }
+
+  function buildMinis() {
+    document.querySelectorAll("[data-mini]").forEach(el => {
+      const cfg = MINI[el.dataset.mini];
+      if (cfg) el.innerHTML = buildMini(cfg);
+    });
+  }
+
+  // ---- Init ----
+  buildStageStrip();
+  buildExplorer();
+  buildMinis();
+  bind();
+  setProgress(0);
+  updatePlayButton();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
