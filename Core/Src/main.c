@@ -74,7 +74,6 @@ static void MX_USART1_UART_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -139,8 +138,14 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     OLED_ClearVram();
-    OLED_ShowString(1, 1, "Shui xinyuan");
-    OLED_ShowString(2, 1, "Hello World!");
+    char string_up[24];
+    char string_down[24];
+    sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
+    sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
+    puts(string_up);
+    puts(string_down);
+    OLED_ShowString(1, 1, string_up);
+    OLED_ShowString(2, 1, string_down);
     OLED_Refresh(&htim3);
   }
   /* USER CODE END 3 */
