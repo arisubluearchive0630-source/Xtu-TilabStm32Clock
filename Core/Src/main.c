@@ -39,9 +39,10 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-SingleBtn buttons[BUTTONS_ATTACHED_NUM];
+SingleBtn buttons[BUTTONS_ATTACHED_NUM]; // 设置-上-下
 static uint16_t buttons_GPIO[] = {GPIO_PIN_12, GPIO_PIN_15, GPIO_PIN_5};
 static GPIO_TypeDef *buttons_GPIO_area[] = {GPIOB, GPIOB, GPIOB};
+short int SettingStatus = 0; // 当前选择位置状态机
 
 /* USER CODE END PM */
 
@@ -64,6 +65,8 @@ struct State
 
 volatile struct Platformtime Time_present;
 uint8_t rx_buffer[64];
+char string_up[24];
+char string_down[24];
 
 /* USER CODE END PV */
 
@@ -83,6 +86,127 @@ int _write(int file, char *ptr, int len)
   (void)file;
   HAL_UART_Transmit(&huart1, (uint8_t *)ptr, (uint16_t)len, 2);
   return len;
+}
+short int fixSettingStatus(short int value)
+{
+  if (SettingStatus > 9)
+  {
+    SettingStatus = 0;
+  }
+  else if (SettingStatus < 0)
+  {
+    SettingStatus = 0;
+  }
+  else
+  {
+    SettingStatus = value;
+  }
+  return SettingStatus;
+}
+void SleepDisplayBasedOnSetting(short int ignore)
+{
+  if (ignore == 0)
+  {
+    switch (SettingStatus)
+    {
+    case 0:
+      OLED_ClearVram();
+      sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
+      sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
+      puts(string_up);
+      puts(string_down);
+      OLED_ShowString(1, 1, string_up);
+      OLED_ShowString(2, 1, string_down);
+      OLED_Refresh(&htim3);
+      break;
+    case 1:
+      // 秒
+      OLED_ClearVram();
+      sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
+      sprintf(string_down, "%02d:%02d:  ", Time_present.hours, Time_present.minutes);
+      puts(string_up);
+      puts(string_down);
+      OLED_ShowString(1, 1, string_up);
+      OLED_ShowString(2, 1, string_down);
+      OLED_Refresh(&htim3);
+      break;
+    case 2:
+      // 分
+      OLED_ClearVram();
+      sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
+      sprintf(string_down, "%02d:  :%02d", Time_present.hours, Time_present.seconds);
+      puts(string_up);
+      puts(string_down);
+      OLED_ShowString(1, 1, string_up);
+      OLED_ShowString(2, 1, string_down);
+      OLED_Refresh(&htim3);
+      break;
+    case 3:
+      // hours
+      OLED_ClearVram();
+      sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
+      sprintf(string_down, "  :%02d:%02d", Time_present.minutes, Time_present.seconds);
+      puts(string_up);
+      puts(string_down);
+      OLED_ShowString(1, 1, string_up);
+      OLED_ShowString(2, 1, string_down);
+      OLED_Refresh(&htim3);
+      break;
+    case 4:
+      // days
+      OLED_ClearVram();
+      sprintf(string_up, "%04d-%02d-  ", Time_present.years, Time_present.months);
+      sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
+      puts(string_up);
+      puts(string_down);
+      OLED_ShowString(1, 1, string_up);
+      OLED_ShowString(2, 1, string_down);
+      OLED_Refresh(&htim3);
+      break;
+    case 5:
+      // months
+      OLED_ClearVram();
+      sprintf(string_up, "%04d-  -%02d", Time_present.years, Time_present.days);
+      sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
+      puts(string_up);
+      puts(string_down);
+      OLED_ShowString(1, 1, string_up);
+      OLED_ShowString(2, 1, string_down);
+      OLED_Refresh(&htim3);
+      break;
+    case 6:
+      OLED_ClearVram();
+      sprintf(string_up, "  -%02d-%02d", Time_present.months, Time_present.days);
+      sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
+      puts(string_up);
+      puts(string_down);
+      OLED_ShowString(1, 1, string_up);
+      OLED_ShowString(2, 1, string_down);
+      OLED_Refresh(&htim3);
+      break;
+    default:
+      OLED_ClearVram();
+      sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
+      sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
+      puts(string_up);
+      puts(string_down);
+      OLED_ShowString(1, 1, string_up);
+      OLED_ShowString(2, 1, string_down);
+      OLED_Refresh(&htim3);
+      break;
+    }
+  }
+  else
+  {
+    OLED_ClearVram();
+    sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
+    sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
+    puts(string_up);
+    puts(string_down);
+    OLED_ShowString(1, 1, string_up);
+    OLED_ShowString(2, 1, string_down);
+    OLED_Refresh(&htim3);
+  }
 }
 /* USER CODE END 0 */
 
@@ -137,16 +261,37 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    OLED_ClearVram();
-    char string_up[24];
-    char string_down[24];
-    sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
-    sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
-    puts(string_up);
-    puts(string_down);
-    OLED_ShowString(1, 1, string_up);
-    OLED_ShowString(2, 1, string_down);
-    OLED_Refresh(&htim3);
+
+    // 显示当前时间
+    short int temp_time = Time_present.seconds;
+    SleepDisplayBasedOnSetting(1);
+    while (Time_present.seconds == temp_time)
+    {
+      GetKeyboardStatus(buttons, 3);
+      if (buttons[0].status == true)
+      {
+        // 假若设置键被按下
+        fixSettingStatus(SettingStatus + 1);
+        HAL_Delay(100); // !延迟100ms处理长按问题
+        break;
+      }
+    }
+    delay_us(&htim3, 1000);
+    temp_time = Time_present.seconds;
+    SleepDisplayBasedOnSetting(0);
+    while (Time_present.seconds == temp_time)
+    {
+      // 接管下一秒的事件
+      if (buttons[0].status == true)
+      {
+        // 假若设置键被按下
+        fixSettingStatus(SettingStatus + 1);
+        HAL_Delay(100); // !延迟100ms处理长按问题
+        break;
+      }
+    }
+    delay_us(&htim3, 1000);
+    // 这是下一秒刚开始的状态了
   }
   /* USER CODE END 3 */
 }
@@ -510,4 +655,5 @@ void assert_failed(uint8_t *file, uint32_t line)
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
+
 #endif /* USE_FULL_ASSERT */
