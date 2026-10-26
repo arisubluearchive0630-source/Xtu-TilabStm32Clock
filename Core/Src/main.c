@@ -264,7 +264,7 @@ int main(void)
 
     // 显示当前时间
     short int temp_time = Time_present.seconds;
-    SleepDisplayBasedOnSetting(1);
+    SleepDisplayBasedOnSetting((Time_present.seconds % 2 == 0 && Time_present.seconds != 60));
     while (Time_present.seconds == temp_time)
     {
       GetKeyboardStatus(buttons, 3);
@@ -272,28 +272,12 @@ int main(void)
       {
         // 假若设置键被按下
         fixSettingStatus(SettingStatus + 1);
-        HAL_Delay(100); // !延迟100ms处理长按问题
+        HAL_Delay(100);
         break;
       }
     }
-    delay_us(&htim3, 1000);
-    temp_time = Time_present.seconds;
-    SleepDisplayBasedOnSetting(0);
-    while (Time_present.seconds == temp_time)
-    {
-      // 接管下一秒的事件
-      if (buttons[0].status == true)
-      {
-        // 假若设置键被按下
-        fixSettingStatus(SettingStatus + 1);
-        HAL_Delay(100); // !延迟100ms处理长按问题
-        break;
-      }
-    }
-    delay_us(&htim3, 1000);
-    // 这是下一秒刚开始的状态了
+    /* USER CODE END 3 */
   }
-  /* USER CODE END 3 */
 }
 
 /**
