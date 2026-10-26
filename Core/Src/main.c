@@ -105,6 +105,7 @@ short int fixSettingStatus(short int value)
 }
 void SleepDisplayBasedOnSetting(short int ignore)
 {
+  OLED_generateChace(&htim3);
   if (ignore == 0)
   {
     switch (SettingStatus)
@@ -113,8 +114,6 @@ void SleepDisplayBasedOnSetting(short int ignore)
       OLED_ClearVram();
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
-      puts(string_up);
-      puts(string_down);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_Refresh(&htim3);
@@ -124,8 +123,7 @@ void SleepDisplayBasedOnSetting(short int ignore)
       OLED_ClearVram();
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:%02d:  ", Time_present.hours, Time_present.minutes);
-      puts(string_up);
-      puts(string_down);
+
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_Refresh(&htim3);
@@ -135,8 +133,7 @@ void SleepDisplayBasedOnSetting(short int ignore)
       OLED_ClearVram();
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:  :%02d", Time_present.hours, Time_present.seconds);
-      puts(string_up);
-      puts(string_down);
+
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_Refresh(&htim3);
@@ -146,8 +143,7 @@ void SleepDisplayBasedOnSetting(short int ignore)
       OLED_ClearVram();
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "  :%02d:%02d", Time_present.minutes, Time_present.seconds);
-      puts(string_up);
-      puts(string_down);
+
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_Refresh(&htim3);
@@ -157,8 +153,7 @@ void SleepDisplayBasedOnSetting(short int ignore)
       OLED_ClearVram();
       sprintf(string_up, "%04d-%02d-  ", Time_present.years, Time_present.months);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
-      puts(string_up);
-      puts(string_down);
+
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_Refresh(&htim3);
@@ -168,8 +163,7 @@ void SleepDisplayBasedOnSetting(short int ignore)
       OLED_ClearVram();
       sprintf(string_up, "%04d-  -%02d", Time_present.years, Time_present.days);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
-      puts(string_up);
-      puts(string_down);
+
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_Refresh(&htim3);
@@ -178,8 +172,7 @@ void SleepDisplayBasedOnSetting(short int ignore)
       OLED_ClearVram();
       sprintf(string_up, "  -%02d-%02d", Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
-      puts(string_up);
-      puts(string_down);
+
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_Refresh(&htim3);
@@ -188,8 +181,6 @@ void SleepDisplayBasedOnSetting(short int ignore)
       OLED_ClearVram();
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
-      puts(string_up);
-      puts(string_down);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_Refresh(&htim3);
@@ -201,8 +192,6 @@ void SleepDisplayBasedOnSetting(short int ignore)
     OLED_ClearVram();
     sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
     sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
-    puts(string_up);
-    puts(string_down);
     OLED_ShowString(1, 1, string_up);
     OLED_ShowString(2, 1, string_down);
     OLED_Refresh(&htim3);
@@ -264,18 +253,28 @@ int main(void)
 
     // 显示当前时间
     short int temp_time = Time_present.seconds;
-    SleepDisplayBasedOnSetting((Time_present.seconds % 2 == 0 && Time_present.seconds != 60));
-    while (Time_present.seconds == temp_time)
+    long long tmep_time_unix = HAL_GetTick();
+    bool flag = false;
+    while (Time_present.seconds == temp_time && HAL_GetTick() - tmep_time_unix < 500)
     {
+      if (flag == false)
+      {
+        SleepDisplayBasedOnSetting(0);
+        flag = true;
+        continue;
+      }
       GetKeyboardStatus(buttons, 3);
       if (buttons[0].status == true)
       {
         // 假若设置键被按下
         fixSettingStatus(SettingStatus + 1);
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
         HAL_Delay(100);
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
         break;
       }
     }
+    SleepDisplayBasedOnSetting(1);
     /* USER CODE END 3 */
   }
 }

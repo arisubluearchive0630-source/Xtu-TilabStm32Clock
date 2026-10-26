@@ -9,3 +9,4 @@
 |b8|iic-sck总线
 |a9|uart
 |a10|uart
+|b3|LED指示灯

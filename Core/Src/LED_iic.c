@@ -12,6 +12,10 @@
 #define OLED_ADDRESS 0x78
 #define IIC_WRITE 0x00
 #define IIC_READ 0x01
+/* 显存镜像：8 页 × 128 列 = 1024 字节 RAM */
+uint8_t OLED_Vram[8][128];
+uint8_t OLED_Vram_chace[8][128];
+_Bool ifRunonce = 1;
 void delay_us(TIM_HandleTypeDef *htimx, unsigned short int time)
 {
     unsigned short int currentTicker = __HAL_TIM_GetCounter(htimx);
@@ -191,12 +195,12 @@ uint8_t OLED_init(TIM_HandleTypeDef *htimx)
     iic_transmit(htimx, 0xAF); // 开启显示
     iic_stopsig(htimx);
     OLED_Clear(htimx);
+    OLED_ClearVram();
+    OLED_Refresh(htimx);
+    ifRunonce = 0;
     return 1;
 }
 /* ===================== 显存（VRAM）与字符显示 ===================== */
-
-/* 显存镜像：8 页 × 128 列 = 1024 字节 RAM */
-uint8_t OLED_Vram[8][128];
 
 /* 清空显存（不刷屏） */
 void OLED_ClearVram(void)
@@ -275,6 +279,19 @@ void OLED_Refresh(TIM_HandleTypeDef *htimx)
 {
     for (uint8_t j = 0; j < 8; j++)
     {
+        uint8_t flag = 0;
+        for (uint8_t x = 0; x < 128; x++)
+        {
+            if (OLED_Vram[j][x] != OLED_Vram_chace[j][x])
+            {
+                flag = 1;
+            }
+        }
+        // 先判断整行是不是完全与之前相同，在这一个项目内可以节省八分之一的刷新时间
+        if (flag == 0 && ifRunonce == 0)
+        {
+            continue;
+        }
         OLED_SetCursor(htimx, j, 0);
         iic_startsig(htimx);
         iic_transmit(htimx, OLED_ADDRESS);
@@ -284,5 +301,16 @@ void OLED_Refresh(TIM_HandleTypeDef *htimx)
             iic_transmit(htimx, OLED_Vram[j][i]);
         }
         iic_stopsig(htimx);
+    }
+}
+// 生成当前显存的快照
+void OLED_generateChace(TIM_HandleTypeDef *htimx)
+{
+    for (size_t i = 0; i < 8; i++)
+    {
+        for (size_t j = 0; j < 128; j++)
+        {
+            OLED_Vram_chace[i][j] = OLED_Vram[i][j];
+        }
     }
 }
