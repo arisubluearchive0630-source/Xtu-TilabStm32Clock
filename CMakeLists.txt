@@ -47,6 +47,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/LED_iic.c
     Core/Src/keyboard.c
     Core/Src/OLED_font.h
+    Core/Src/Onewire_DS18B20.c
 )
 
 # Add include paths
@@ -58,7 +59,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
 )
-
+# 使得sprintf支持浮点数
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE -u _printf_float)
 # Remove wrong libob.a library dependency when using cpp files
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 

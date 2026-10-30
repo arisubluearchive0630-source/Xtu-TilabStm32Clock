@@ -25,6 +25,7 @@
 #include <string.h>
 #include "LED_iic.h"
 #include "keyboard.h"
+#include "Onewire_DS18B20.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,7 +68,10 @@ volatile struct Platformtime Time_present;
 uint8_t rx_buffer[64];
 char string_up[24];
 char string_down[24];
-
+char string_3[24];
+short int ALARM_TEMPTURE = 5;         // 报警温度
+volatile float current_tempture = 23; // 当前温度
+volatile short int *volume_pointer;   // !上下键要修改的值的指针，易变
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -114,76 +118,106 @@ void SleepDisplayBasedOnSetting(short int ignore)
       OLED_ClearVram();
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
+      sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
+      OLED_ShowString(3, 1, string_3);
       OLED_Refresh(&htim3);
+      volume_pointer = NULL;
       break;
     case 1:
       // 秒
       OLED_ClearVram();
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:%02d:  ", Time_present.hours, Time_present.minutes);
-
+      sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
+      OLED_ShowString(3, 1, string_3);
       OLED_Refresh(&htim3);
+      volume_pointer = &Time_present.seconds;
       break;
     case 2:
       // 分
       OLED_ClearVram();
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:  :%02d", Time_present.hours, Time_present.seconds);
-
+      sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
+      OLED_ShowString(3, 1, string_3);
       OLED_Refresh(&htim3);
+      volume_pointer = &Time_present.minutes;
       break;
     case 3:
       // hours
       OLED_ClearVram();
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "  :%02d:%02d", Time_present.minutes, Time_present.seconds);
-
+      sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
+      OLED_ShowString(3, 1, string_3);
       OLED_Refresh(&htim3);
+      volume_pointer = &Time_present.hours;
       break;
     case 4:
       // days
       OLED_ClearVram();
       sprintf(string_up, "%04d-%02d-  ", Time_present.years, Time_present.months);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
-
+      sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
+      OLED_ShowString(3, 1, string_3);
       OLED_Refresh(&htim3);
+      volume_pointer = &Time_present.days;
       break;
     case 5:
       // months
       OLED_ClearVram();
       sprintf(string_up, "%04d-  -%02d", Time_present.years, Time_present.days);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
-
+      sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
+      OLED_ShowString(3, 1, string_3);
       OLED_Refresh(&htim3);
+      volume_pointer = &Time_present.months;
       break;
     case 6:
+      // years
       OLED_ClearVram();
       sprintf(string_up, "  -%02d-%02d", Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
-
+      sprintf(string_3, "C:%.2f A:%.d", current_tempture, ALARM_TEMPTURE);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
+      OLED_ShowString(3, 1, string_3);
       OLED_Refresh(&htim3);
+      volume_pointer = &Time_present.years;
+      break;
+    case 9:
+      OLED_ClearVram();
+      sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
+      sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
+      sprintf(string_3, "C:%.2f A:  ", current_tempture);
+      OLED_ShowString(1, 1, string_up);
+      OLED_ShowString(2, 1, string_down);
+      OLED_ShowString(3, 1, string_3);
+      OLED_Refresh(&htim3);
+      volume_pointer = &ALARM_TEMPTURE;
       break;
     default:
       OLED_ClearVram();
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
+      sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
+      OLED_ShowString(3, 1, string_3);
       OLED_Refresh(&htim3);
+      volume_pointer = NULL;
       break;
     }
   }
@@ -192,9 +226,12 @@ void SleepDisplayBasedOnSetting(short int ignore)
     OLED_ClearVram();
     sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
     sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
+    sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
     OLED_ShowString(1, 1, string_up);
     OLED_ShowString(2, 1, string_down);
+    OLED_ShowString(3, 1, string_3);
     OLED_Refresh(&htim3);
+    volume_pointer = NULL;
   }
 }
 /* USER CODE END 0 */
@@ -255,6 +292,11 @@ int main(void)
     short int temp_time = Time_present.seconds;
     long long tmep_time_unix = HAL_GetTick();
     bool flag = false;
+    if (HAL_GetTick() - DS18B20_launchConvertTick > 1000)
+    {
+      current_tempture = DS18B20_read(&htim3);
+      DS18B20_tempConvert(&htim3);
+    }
     while (Time_present.seconds == temp_time && HAL_GetTick() - tmep_time_unix < 500)
     {
       if (flag == false)
@@ -273,17 +315,34 @@ int main(void)
         HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
         break;
       }
+      // 处理上
+      if (buttons[1].status == true)
+      {
+        *volume_pointer += 1;
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+        HAL_Delay(100);
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
+        break;
+      }
+      // 处理下
+      if (buttons[2].status == true && (*volume_pointer >= 1 || SettingStatus == 9))
+      {
+        *volume_pointer -= 1;
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+        HAL_Delay(100);
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
+        break;
+      }
     }
     SleepDisplayBasedOnSetting(1);
-    /* USER CODE END 3 */
   }
+  /* USER CODE END 3 */
 }
 
 /**
  * @brief System Clock Configuration
  * @retval None
  */
-
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -449,11 +508,14 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3 | SCK_Pin | SDA_Pin, GPIO_PIN_RESET);
@@ -465,10 +527,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PA3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pins : volumeup_Pin volumedown_Pin setting_Pin */
   GPIO_InitStruct.Pin = volumeup_Pin | volumedown_Pin | setting_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB3 */
@@ -638,5 +707,4 @@ void assert_failed(uint8_t *file, uint32_t line)
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
-
 #endif /* USE_FULL_ASSERT */
