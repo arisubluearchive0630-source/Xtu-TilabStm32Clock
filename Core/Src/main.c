@@ -69,9 +69,12 @@ uint8_t rx_buffer[64];
 char string_up[24];
 char string_down[24];
 char string_3[24];
-short int ALARM_TEMPTURE = 5;         // 报警温度
-volatile float current_tempture = 23; // 当前温度
-volatile short int *volume_pointer;   // !上下键要修改的值的指针，易变
+char string_4[24];
+short int alarm_hours = 14, alarm_minutes = 10; // 闹铃时间
+_Bool alarm_trigger = false;                    // 闹铃是否正在触发
+short int ALARM_TEMPTURE = 5;                   // 报警温度
+volatile float current_tempture = 23;           // 当前温度
+volatile short int *volume_pointer;             // !上下键要修改的值的指针，易变
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -85,6 +88,22 @@ static void MX_TIM3_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+int max(int a, int b)
+{
+  if (a > b)
+  {
+    return a;
+  }
+  return b;
+}
+int min(int a, int b)
+{
+  if (a < b)
+  {
+    return a;
+  }
+  return b;
+}
 int _write(int file, char *ptr, int len)
 {
   (void)file;
@@ -119,9 +138,11 @@ void SleepDisplayBasedOnSetting(short int ignore)
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
       sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
+      sprintf(string_4, "A:%02d:%02d", alarm_hours, alarm_minutes);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_ShowString(3, 1, string_3);
+      OLED_ShowString(4, 1, string_4);
       OLED_Refresh(&htim3);
       volume_pointer = NULL;
       break;
@@ -131,9 +152,11 @@ void SleepDisplayBasedOnSetting(short int ignore)
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:%02d:  ", Time_present.hours, Time_present.minutes);
       sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
+      sprintf(string_4, "A:%02d:%02d", alarm_hours, alarm_minutes);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_ShowString(3, 1, string_3);
+      OLED_ShowString(4, 1, string_4);
       OLED_Refresh(&htim3);
       volume_pointer = &Time_present.seconds;
       break;
@@ -143,9 +166,11 @@ void SleepDisplayBasedOnSetting(short int ignore)
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:  :%02d", Time_present.hours, Time_present.seconds);
       sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
+      sprintf(string_4, "A:%02d:%02d", alarm_hours, alarm_minutes);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_ShowString(3, 1, string_3);
+      OLED_ShowString(4, 1, string_4);
       OLED_Refresh(&htim3);
       volume_pointer = &Time_present.minutes;
       break;
@@ -155,9 +180,11 @@ void SleepDisplayBasedOnSetting(short int ignore)
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "  :%02d:%02d", Time_present.minutes, Time_present.seconds);
       sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
+      sprintf(string_4, "A:%02d:%02d", alarm_hours, alarm_minutes);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_ShowString(3, 1, string_3);
+      OLED_ShowString(4, 1, string_4);
       OLED_Refresh(&htim3);
       volume_pointer = &Time_present.hours;
       break;
@@ -167,9 +194,11 @@ void SleepDisplayBasedOnSetting(short int ignore)
       sprintf(string_up, "%04d-%02d-  ", Time_present.years, Time_present.months);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
       sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
+      sprintf(string_4, "A:%02d:%02d", alarm_hours, alarm_minutes);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_ShowString(3, 1, string_3);
+      OLED_ShowString(4, 1, string_4);
       OLED_Refresh(&htim3);
       volume_pointer = &Time_present.days;
       break;
@@ -179,32 +208,67 @@ void SleepDisplayBasedOnSetting(short int ignore)
       sprintf(string_up, "%04d-  -%02d", Time_present.years, Time_present.days);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
       sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
+      sprintf(string_4, "A:%02d:%02d", alarm_hours, alarm_minutes);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_ShowString(3, 1, string_3);
+      OLED_ShowString(4, 1, string_4);
       OLED_Refresh(&htim3);
       volume_pointer = &Time_present.months;
       break;
     case 6:
       // years
       OLED_ClearVram();
-      sprintf(string_up, "  -%02d-%02d", Time_present.months, Time_present.days);
+      sprintf(string_up, "    -%02d-%02d", Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
       sprintf(string_3, "C:%.2f A:%.d", current_tempture, ALARM_TEMPTURE);
+      sprintf(string_4, "A:%02d:%02d", alarm_hours, alarm_minutes);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_ShowString(3, 1, string_3);
+      OLED_ShowString(4, 1, string_4);
       OLED_Refresh(&htim3);
       volume_pointer = &Time_present.years;
       break;
+    case 7:
+      // 闹铃时
+      OLED_ClearVram();
+      sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
+      sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
+      sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
+      sprintf(string_4, "A:  :%02d ", alarm_minutes);
+      OLED_ShowString(1, 1, string_up);
+      OLED_ShowString(2, 1, string_down);
+      OLED_ShowString(3, 1, string_3);
+      OLED_ShowString(4, 1, string_4);
+      OLED_Refresh(&htim3);
+      volume_pointer = &alarm_hours;
+      break;
+    case 8:
+      // 闹铃分
+      OLED_ClearVram();
+      sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
+      sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
+      sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
+      sprintf(string_4, "A:%02d:  ", alarm_hours);
+      OLED_ShowString(1, 1, string_up);
+      OLED_ShowString(2, 1, string_down);
+      OLED_ShowString(3, 1, string_3);
+      OLED_ShowString(4, 1, string_4);
+      OLED_Refresh(&htim3);
+      volume_pointer = &alarm_minutes;
+      break;
     case 9:
+      // 温度报警
       OLED_ClearVram();
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
       sprintf(string_3, "C:%.2f A:  ", current_tempture);
+      sprintf(string_4, "A:%02d:%02d", alarm_hours, alarm_minutes);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_ShowString(3, 1, string_3);
+      OLED_ShowString(4, 1, string_4);
       OLED_Refresh(&htim3);
       volume_pointer = &ALARM_TEMPTURE;
       break;
@@ -213,9 +277,11 @@ void SleepDisplayBasedOnSetting(short int ignore)
       sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
       sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
       sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
+      sprintf(string_4, "A:%02d:%02d", alarm_hours, alarm_minutes);
       OLED_ShowString(1, 1, string_up);
       OLED_ShowString(2, 1, string_down);
       OLED_ShowString(3, 1, string_3);
+      OLED_ShowString(4, 1, string_4);
       OLED_Refresh(&htim3);
       volume_pointer = NULL;
       break;
@@ -227,9 +293,11 @@ void SleepDisplayBasedOnSetting(short int ignore)
     sprintf(string_up, "%04d-%02d-%02d", Time_present.years, Time_present.months, Time_present.days);
     sprintf(string_down, "%02d:%02d:%02d", Time_present.hours, Time_present.minutes, Time_present.seconds);
     sprintf(string_3, "C:%.2f A:%d", current_tempture, ALARM_TEMPTURE);
+    sprintf(string_4, "A:%02d:%02d", alarm_hours, alarm_minutes);
     OLED_ShowString(1, 1, string_up);
     OLED_ShowString(2, 1, string_down);
     OLED_ShowString(3, 1, string_3);
+    OLED_ShowString(4, 1, string_4);
     OLED_Refresh(&htim3);
     volume_pointer = NULL;
   }
@@ -629,6 +697,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     {
       Time_present.years++;
       Time_present.months = 1;
+    }
+    // 闹铃合法性
+    alarm_hours = max(min(alarm_hours, 23), 0);
+    alarm_minutes = max(min(alarm_hours, 59), 0);
+    // 闹铃触发的判断
+    if (Time_present.minutes == alarm_minutes && Time_present.hours == alarm_hours && Time_present.seconds == 0 && alarm_trigger == false)
+    {
+      //* 闹铃使能，当前没有触发闹钟，在设定的时间的第零秒触发
+      alarm_trigger = true;
     }
   }
   // !
