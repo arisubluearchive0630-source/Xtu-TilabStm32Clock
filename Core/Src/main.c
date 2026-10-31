@@ -70,11 +70,12 @@ char string_up[24];
 char string_down[24];
 char string_3[24];
 char string_4[24];
-short int alarm_hours = 14, alarm_minutes = 10; // 闹铃时间
-_Bool alarm_trigger = false;                    // 闹铃是否正在触发
-short int ALARM_TEMPTURE = 26;                  // 报警温度
-volatile float current_tempture = 0;            // 当前温度
-volatile short int *volume_pointer;             // !上下键要修改的值的指针，易变
+short int alarm_hours = 0, alarm_minutes = 1; // 闹铃时间
+_Bool alarm_trigger = false;                  // 闹铃/警报是否正在触发
+long long alarm_trigger_unix = 0;             // 闹铃触发的时间
+short int ALARM_TEMPTURE = 26;                // 报警温度
+volatile float current_tempture = 0;          // 当前温度
+volatile short int *volume_pointer;           // !上下键要修改的值的指针，易变
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -345,6 +346,8 @@ int main(void)
   HAL_UARTEx_ReceiveToIdle_IT(&huart1, rx_buffer, sizeof rx_buffer);
   iic_initialize();
   OLED_init(&htim3);
+  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -364,6 +367,11 @@ int main(void)
     {
       current_tempture = DS18B20_read(&htim3);
       DS18B20_tempConvert(&htim3);
+      if (current_tempture > ALARM_TEMPTURE * 1.0 && Time_present.seconds % 5 == 0)
+      {
+        // 温度检测报警，防止频繁触发
+        alarm_trigger = true;
+      }
     }
     while (Time_present.seconds == temp_time && HAL_GetTick() - tmep_time_unix < 500)
     {
@@ -372,6 +380,18 @@ int main(void)
         SleepDisplayBasedOnSetting(0);
         flag = true;
         continue;
+      }
+      if (alarm_trigger == true)
+      {
+        // TODO 在这里写蜂鸣器和led逻辑
+        for (int i = 0; i < 28; i++)
+        {
+          fixSettingStatus(0); // 强行中断当前的修改任务
+          HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
+          SleepDisplayBasedOnSetting(1);
+          HAL_Delay(100);
+        }
+        alarm_trigger = false;
       }
     }
     SleepDisplayBasedOnSetting(1);
@@ -683,7 +703,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
     // 闹铃合法性
     alarm_hours = max(min(alarm_hours, 23), 0);
-    alarm_minutes = max(min(alarm_hours, 59), 0);
+    alarm_minutes = max(min(alarm_minutes, 59), 0);
     // 闹铃触发的判断
     if (Time_present.minutes == alarm_minutes && Time_present.hours == alarm_hours && Time_present.seconds == 0 && alarm_trigger == false)
     {
@@ -727,7 +747,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
     if (strncmp((char *)rx_buffer, "t?", 2) == 0)
     {
       // if t?
-      printf("current time:%d-%d-%d %d:%d:%d\n", Time_present.years, Time_present.months, Time_present.days,
+      printf("current time:%04d-%02d-%02d %02d:%02d:%02d\n", Time_present.years, Time_present.months, Time_present.days,
              Time_present.hours, Time_present.minutes, Time_present.seconds);
     }
     if (strncmp((char *)rx_buffer, "#date", 5) == 0 && Size >= 15 && rx_buffer[9] == '-' && rx_buffer[12] == '-')
