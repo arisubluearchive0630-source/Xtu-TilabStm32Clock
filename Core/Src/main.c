@@ -72,8 +72,8 @@ char string_3[24];
 char string_4[24];
 short int alarm_hours = 14, alarm_minutes = 10; // 闹铃时间
 _Bool alarm_trigger = false;                    // 闹铃是否正在触发
-short int ALARM_TEMPTURE = 5;                   // 报警温度
-volatile float current_tempture = 23;           // 当前温度
+short int ALARM_TEMPTURE = 26;                  // 报警温度
+volatile float current_tempture = 0;            // 当前温度
 volatile short int *volume_pointer;             // !上下键要修改的值的指针，易变
 /* USER CODE END PV */
 
@@ -613,7 +613,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   {
     // * only run when the callback is triggered by TIM1
     // * update time
-    Time_present.seconds++;
+    if (!(SettingStatus <= 6 && SettingStatus >= 1))
+    {
+      // 在设置时间的时候暂停时间的流动（很高级吧！对吧对吧？！）
+      Time_present.seconds++;
+    }
     if (Time_present.seconds >= 60)
     {
       Time_present.seconds = 0;
