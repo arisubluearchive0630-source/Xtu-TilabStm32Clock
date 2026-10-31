@@ -708,12 +708,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       fixSettingStatus(SettingStatus + 1);
     }
     // 处理上
-    if (buttons[1].status == true)
+    if (buttons[1].status == true && volume_pointer != NULL)
     {
       *volume_pointer += 1;
     }
     // 处理下
-    if (buttons[2].status == true && (*volume_pointer >= 1 || SettingStatus == 9))
+    if (buttons[2].status == true && volume_pointer != NULL)
     {
       *volume_pointer -= 1;
     }
