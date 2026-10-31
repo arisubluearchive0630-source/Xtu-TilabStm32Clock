@@ -683,7 +683,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
     // 闹铃合法性
     alarm_hours = max(min(alarm_hours, 23), 0);
-    alarm_minutes = max(min(alarm_hours, 59), 0);
+    alarm_minutes = max(min(alarm_minutes, 59), 0);
     // 闹铃触发的判断
     if (Time_present.minutes == alarm_minutes && Time_present.hours == alarm_hours && Time_present.seconds == 0 && alarm_trigger == false)
     {
