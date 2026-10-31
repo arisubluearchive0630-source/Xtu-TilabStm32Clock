@@ -112,7 +112,7 @@ int _write(int file, char *ptr, int len)
 }
 short int fixSettingStatus(short int value)
 {
-  if (SettingStatus > 9)
+  if (SettingStatus > 8)
   {
     SettingStatus = 0;
   }
@@ -373,34 +373,6 @@ int main(void)
         flag = true;
         continue;
       }
-      GetKeyboardStatus(buttons, 3);
-      if (buttons[0].status == true)
-      {
-        // 假若设置键被按下
-        fixSettingStatus(SettingStatus + 1);
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
-        HAL_Delay(100);
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
-        break;
-      }
-      // 处理上
-      if (buttons[1].status == true)
-      {
-        *volume_pointer += 1;
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
-        HAL_Delay(100);
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
-        break;
-      }
-      // 处理下
-      if (buttons[2].status == true && (*volume_pointer >= 1 || SettingStatus == 9))
-      {
-        *volume_pointer -= 1;
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
-        HAL_Delay(100);
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
-        break;
-      }
     }
     SleepDisplayBasedOnSetting(1);
   }
@@ -602,9 +574,9 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : volumeup_Pin volumedown_Pin setting_Pin */
-  GPIO_InitStruct.Pin = volumeup_Pin | volumedown_Pin | setting_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  /*Configure GPIO pins : PB12 PB15 PB5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_12 | GPIO_PIN_15 | GPIO_PIN_5;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -621,6 +593,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -709,6 +688,32 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
   }
   // !
+}
+// 按键触发中断函数
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  /*  简单思考了一下，这里似乎没有办法区分端口，例如A1,B1，搜索资料发现这似乎是stm32的限制
+      需要多加注意 */
+  if (GPIO_Pin == GPIO_PIN_12 || GPIO_Pin == GPIO_PIN_5 || GPIO_Pin == GPIO_PIN_15)
+  {
+    // 若触发了按钮事件
+    GetKeyboardStatus(buttons, 3);
+    if (buttons[0].status == true)
+    {
+      // 假若设置键被按下
+      fixSettingStatus(SettingStatus + 1);
+    }
+    // 处理上
+    if (buttons[1].status == true)
+    {
+      *volume_pointer += 1;
+    }
+    // 处理下
+    if (buttons[2].status == true && (*volume_pointer >= 1 || SettingStatus == 9))
+    {
+      *volume_pointer -= 1;
+    }
+  }
 }
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {

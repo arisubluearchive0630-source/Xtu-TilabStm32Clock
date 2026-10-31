@@ -57,12 +57,6 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define volumeup_Pin GPIO_PIN_12
-#define volumeup_GPIO_Port GPIOB
-#define volumedown_Pin GPIO_PIN_15
-#define volumedown_GPIO_Port GPIOB
-#define setting_Pin GPIO_PIN_5
-#define setting_GPIO_Port GPIOB
 #define SCK_Pin GPIO_PIN_8
 #define SCK_GPIO_Port GPIOB
 #define SDA_Pin GPIO_PIN_9
