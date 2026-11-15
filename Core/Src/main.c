@@ -316,6 +316,12 @@ int main(void)
   {
     SingleBtn_Init(&buttons[i], buttons_GPIO_area[i], buttons_GPIO[i]);
   }
+  Time_present.years = 2026;
+  Time_present.months = 9;
+  Time_present.days = 12;
+  Time_present.hours = 10;
+  Time_present.minutes = 00;
+  Time_present.seconds = 00;
   //! Button initialization
   /* USER CODE END 1 */
 
