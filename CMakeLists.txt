@@ -48,6 +48,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/keyboard.c
     Core/Src/OLED_font.h
     Core/Src/Onewire_DS18B20.c
+    Core/Src/TB6612FNG.c
+
 )
 
 # Add include paths

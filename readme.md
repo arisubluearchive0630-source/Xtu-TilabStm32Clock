@@ -10,3 +10,4 @@
 |a9|uart
 |a10|uart
 |b3|LED指示灯
+|C13|STBY

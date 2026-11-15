@@ -26,6 +26,7 @@
 #include "LED_iic.h"
 #include "keyboard.h"
 #include "Onewire_DS18B20.h"
+#include "TB6612FNG.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -36,6 +37,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define BUTTONS_ATTACHED_NUM 3
+#define MOTORS_ATTACHED_NUM 1
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -43,6 +46,7 @@
 SingleBtn buttons[BUTTONS_ATTACHED_NUM]; // 设置-上-下
 static uint16_t buttons_GPIO[] = {GPIO_PIN_12, GPIO_PIN_15, GPIO_PIN_5};
 static GPIO_TypeDef *buttons_GPIO_area[] = {GPIOB, GPIOB, GPIOB};
+SingleMotor motor;
 short int SettingStatus = 0; // 当前选择位置状态机
 
 /* USER CODE END PM */
@@ -317,6 +321,12 @@ int main(void)
   {
     SingleBtn_Init(&buttons[i], buttons_GPIO_area[i], buttons_GPIO[i]);
   }
+  Time_present.years = 2026;
+  Time_present.months = 9;
+  Time_present.days = 12;
+  Time_present.hours = 10;
+  Time_present.minutes = 00;
+  Time_present.seconds = 00;
   //! Button initialization
   /* USER CODE END 1 */
 
@@ -346,6 +356,7 @@ int main(void)
   HAL_UARTEx_ReceiveToIdle_IT(&huart1, rx_buffer, sizeof rx_buffer);
   iic_initialize();
   OLED_init(&htim3);
+  SingleMotor_Init(&motor, GPIOA, GPIO_PIN_5, GPIOA, GPIO_PIN_6, GPIOA, GPIO_PIN_7); // 对电机进行初始化
   HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
 
   /* USER CODE END 2 */
@@ -354,7 +365,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
+    while (1)
+    {
+      SingleMotor_Speed(&motor, 255);
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -575,7 +589,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3 | SCK_Pin | SDA_Pin, GPIO_PIN_RESET);
@@ -590,6 +604,13 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : PA3 */
   GPIO_InitStruct.Pin = GPIO_PIN_3;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PA5 PA6 PA7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
