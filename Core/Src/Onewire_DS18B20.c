@@ -99,7 +99,7 @@ float DS18B20_read(TIM_HandleTypeDef *htimx)
     else
     {
         float current = DS18B20_tempRead(htimx);
-        if (current - last_temperature > -5 && current - last_temperature < 5)
+        if (current - last_temperature > -3 && current - last_temperature < 3)
         {
             last_temperature = current;
             return current;
