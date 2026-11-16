@@ -321,13 +321,17 @@ int main(void)
   {
     SingleBtn_Init(&buttons[i], buttons_GPIO_area[i], buttons_GPIO[i]);
   }
+  //! Button initialization
   Time_present.years = 2026;
   Time_present.months = 9;
   Time_present.days = 12;
   Time_present.hours = 10;
   Time_present.minutes = 00;
   Time_present.seconds = 00;
-  //! Button initialization
+  alarm_hours = Time_present.hours;
+  alarm_minutes = Time_present.minutes + 1;
+  // DEBUG 闹铃时间初始化
+  //! 时间初始化
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -365,10 +369,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    while (1)
-    {
-      SingleMotor_Speed(&motor, 255);
-    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -381,6 +381,7 @@ int main(void)
     {
       current_tempture = DS18B20_read(&htim3);
       DS18B20_tempConvert(&htim3);
+      SleepDisplayBasedOnSetting(0);
       if (current_tempture > ALARM_TEMPTURE * 1.0 && Time_present.seconds % 5 == 0)
       {
         // 温度检测报警，防止频繁触发
@@ -403,7 +404,16 @@ int main(void)
           fixSettingStatus(0); // 强行中断当前的修改任务
           HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
           SleepDisplayBasedOnSetting(1);
-          HAL_Delay(100);
+          unsigned long long tick = HAL_GetTick();
+          while (HAL_GetTick() - tick < 100)
+          {
+            if (current_tempture > ALARM_TEMPTURE * 1.0)
+            {
+              // 如果闹铃是由温度驱动
+              SingleMotor_Forward(&motor);
+            }
+          }
+          SingleMotor_Stop(&motor);
         }
         alarm_trigger = false;
       }
@@ -708,7 +718,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       break;
     default:
       DAYS_MAX = 31;
-      // *although there is no possible to reach this sector
+      // * 保底策略
       break;
     }
     // * end calculating run years
@@ -722,7 +732,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       Time_present.years++;
       Time_present.months = 1;
     }
-    // 闹铃合法性
+    // 闹铃时间合法性检验
     alarm_hours = max(min(alarm_hours, 23), 0);
     alarm_minutes = max(min(alarm_minutes, 59), 0);
     // 闹铃触发的判断
@@ -737,8 +747,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 // 按键触发中断函数
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-  /*  简单思考了一下，这里似乎没有办法区分端口，例如A1,B1，搜索资料发现这似乎是stm32的限制
-      需要多加注意 */
+  /*  !简单思考了一下，这里似乎没有办法区分端口，例如A1,B1，搜索资料发现这似乎是stm32的限制
+      !需要多加注意 */
   if (GPIO_Pin == GPIO_PIN_12 || GPIO_Pin == GPIO_PIN_5 || GPIO_Pin == GPIO_PIN_15)
   {
     // 若触发了按钮事件

@@ -99,7 +99,8 @@ float DS18B20_read(TIM_HandleTypeDef *htimx)
     else
     {
         float current = DS18B20_tempRead(htimx);
-        if (current - last_temperature > -3 && current - last_temperature < 3)
+        if (current - last_temperature > -3 && current - last_temperature < 3 && current < 85.0 && current > -30)
+        // 软件消除抖策略，条件限制在abs(δ)<3，且温度在合理测量值内
         {
             last_temperature = current;
             return current;
