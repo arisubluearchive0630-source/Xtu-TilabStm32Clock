@@ -38,6 +38,10 @@
 /* USER CODE BEGIN PD */
 #define BUTTONS_ATTACHED_NUM 3
 #define MOTORS_ATTACHED_NUM 1
+#define buzzer_pin_area GPIOB
+#define buzzer_pin GPIO_PIN_10
+#define buzzer_activate() HAL_GPIO_WritePin(buzzer_pin_area, buzzer_pin, GPIO_PIN_RESET);
+#define buzzer_deactivate() HAL_GPIO_WritePin(buzzer_pin_area, buzzer_pin, GPIO_PIN_SET);
 
 /* USER CODE END PD */
 
@@ -358,6 +362,7 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_TIM_Base_Start(&htim3);
   HAL_UARTEx_ReceiveToIdle_IT(&huart1, rx_buffer, sizeof rx_buffer);
+  buzzer_deactivate();
   iic_initialize();
   OLED_init(&htim3);
   SingleMotor_Init(&motor, GPIOA, GPIO_PIN_5, GPIOA, GPIO_PIN_6, GPIOA, GPIO_PIN_7); // 对电机进行初始化
@@ -382,7 +387,7 @@ int main(void)
       current_tempture = DS18B20_read(&htim3);
       DS18B20_tempConvert(&htim3);
       SleepDisplayBasedOnSetting(0);
-      if (current_tempture > ALARM_TEMPTURE * 1.0 && Time_present.seconds % 5 == 0)
+      if (current_tempture > ALARM_TEMPTURE * 1.0)
       {
         // 温度检测报警，防止频繁触发
         alarm_trigger = true;
@@ -396,13 +401,14 @@ int main(void)
         flag = true;
         continue;
       }
-      if (alarm_trigger == true)
+      if (alarm_trigger == true && SettingStatus != 9)
       {
         // TODO 在这里写蜂鸣器和led逻辑
         for (int i = 0; i < 28; i++)
         {
           fixSettingStatus(0); // 强行中断当前的修改任务
           HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
+          buzzer_activate();
           SleepDisplayBasedOnSetting(1);
           unsigned long long tick = HAL_GetTick();
           while (HAL_GetTick() - tick < 100)
@@ -414,6 +420,7 @@ int main(void)
             }
           }
           SingleMotor_Stop(&motor);
+          buzzer_deactivate();
         }
         alarm_trigger = false;
       }
@@ -602,7 +609,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3 | SCK_Pin | SDA_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10 | GPIO_PIN_3 | SCK_Pin | SDA_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
@@ -625,17 +632,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : PB10 PB3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_10 | GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   /*Configure GPIO pins : PB12 PB15 PB5 */
   GPIO_InitStruct.Pin = GPIO_PIN_12 | GPIO_PIN_15 | GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PB3 */
-  GPIO_InitStruct.Pin = GPIO_PIN_3;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : SCK_Pin SDA_Pin */
